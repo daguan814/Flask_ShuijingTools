@@ -25,6 +25,6 @@ if __name__ == '__main__':
     # 使用SSL证书运行应用
     app.run(
         host='0.0.0.0',
-        port=18081,
+        port=18080,
         ssl_context=ssl_context
     )
