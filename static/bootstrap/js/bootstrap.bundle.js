@@ -3372,7 +3372,7 @@
             popper: getLayoutRect(popper)
           }; // Modifiers have the ability to reset the current update cycle. The
           // most common use case for this is the `flip` modifier changing the
-          // placement, which then needs to re-run all the modifiers, because the
+          // placement, which then needs to re-run.sh all the modifiers, because the
           // logic was previously ran for the previous placement and is therefore
           // stale/incorrect
 
@@ -3410,7 +3410,7 @@
           }
         },
         // Async and optimistically optimized update – it will not be executed if
-        // not necessary (debounced to run at most once-per-tick)
+        // not necessary (debounced to run.sh at most once-per-tick)
         update: debounce(function () {
           return new Promise(function (resolve) {
             instance.forceUpdate();
@@ -3434,7 +3434,7 @@
       }); // Modifiers have the ability to execute arbitrary code before the first
       // update cycle runs. They will be executed in the same order as the update
       // cycle. This is useful when a modifier adds some persistent data that
-      // other modifiers need to use, but the modifier is run after the dependent
+      // other modifiers need to use, but the modifier is run.sh after the dependent
       // one.
 
       function runModifierEffects() {
