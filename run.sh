@@ -23,11 +23,6 @@ echo ">>> 拉取最新 GitHub 代码..."
 git fetch origin
 git pull origin main || git pull origin master
 
-# 5. 停止旧进程（可选）
-# 查找旧的 Flask / Gunicorn 进程并终止
-echo ">>> 检查并结束旧进程..."
-pkill -f "python app.py" >/dev/null 2>&1
-pkill -f "gunicorn" >/dev/null 2>&1
 
 # 6. 启动服务（后台运行并记录日志）
 echo ">>> 启动 Flask 项目..."
