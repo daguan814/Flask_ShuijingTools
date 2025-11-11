@@ -1,0 +1,88 @@
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    background-color: #f8f9fa;
+    padding-top: 20px;
+}
+.container {
+    max-width: 1000px;
+}
+.card {
+    margin-bottom: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+}
+.card-header {
+    background-color: #0d6efd;
+    color: white;
+    border-bottom: none;
+}
+.card-body {
+    padding: 20px;
+}
+.text-content {
+    word-break: break-all;
+    white-space: pre-wrap;
+}
+.date-info {
+    font-size: 0.9rem;
+    color: #6c757d;
+}
+.loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 200px;
+    font-size: 1.2rem;
+    color: #6c757d;
+}
+.error {
+    background-color: #f8d7da;
+    color: #842029;
+    padding: 15px;
+    border-radius: 5px;
+    margin-bottom: 20px;
+}
+.url-link {
+    color: #0d6efd;
+    text-decoration: none;
+    font-weight: 500;
+    border-bottom: 1px dashed #0d6efd;
+    padding-bottom: 1px;
+}
+.url-link:hover {
+    text-decoration: none;
+    border-bottom: 1px solid #0d6efd;
+}
+.form-group {
+    margin-bottom: 15px;
+}
+.submit-btn {
+    background-color: #0d6efd;
+    border: none;
+    transition: background-color 0.3s ease;
+}
+.submit-btn:hover {
+    background-color: #0a58ca;
+}
+.delete-btn {
+    transition: background-color 0.3s ease;
+}
+
+.delete-btn:hover {
+    background-color: #dc3545;
+    border-color: #dc3545;
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: #0d6efd;
+    color: white;
+    border-bottom: none;
+}
