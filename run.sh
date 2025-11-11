@@ -26,9 +26,8 @@ git pull origin main || git pull origin master
 
 # 6. 启动服务（后台运行并记录日志）
 echo ">>> 启动 Flask 项目..."
-nohup python app.py > "$LOG_FILE" 2>&1 &
+python app.py
 
 # 7. 显示运行状态
 echo "✅ Flask 项目已启动！"
 echo "📄 日志位置: $LOG_FILE"
-echo "💡 运行中可查看日志: tail -f $LOG_FILE"
