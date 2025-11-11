@@ -30,4 +30,4 @@ python app.py
 
 # 7. 显示运行状态
 echo "✅ Flask 项目已启动！"
-echo "📄 日志位置: $LOG_FILE"
+
