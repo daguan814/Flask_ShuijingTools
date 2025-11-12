@@ -4,9 +4,18 @@
     let passwordSequence = [];
     // 密码最大长度限制
     const maxPasswordLength = 9;
+    // 存储键名
+    const AUTH_KEY = 'share_page_authenticated';
     
     // 初始化密码锁
     function initPasswordLock() {
+        // 首先检查是否已经认证过
+        if (isAuthenticated()) {
+            // 如果已认证，直接显示内容
+            document.querySelector('.container').style.display = 'block';
+            return;
+        }
+        
         // 创建密码锁界面
         const lockContainer = document.createElement('div');
         lockContainer.id = 'password-lock';
@@ -125,8 +134,27 @@
         updatePasswordDisplay();
     }
     
+    // 检查是否已经认证过
+    function isAuthenticated() {
+        try {
+            const authStatus = localStorage.getItem(AUTH_KEY);
+            // 简单的验证逻辑，检查是否存在且不为空
+            return authStatus && authStatus === 'true';
+        } catch (e) {
+            // 如果localStorage不可用，返回未认证
+            return false;
+        }
+    }
+    
     // 解锁系统
     function unlockSystem() {
+        // 保存认证状态到localStorage
+        try {
+            localStorage.setItem(AUTH_KEY, 'true');
+        } catch (e) {
+            console.warn('无法保存认证状态', e);
+        }
+        
         const lockContainer = document.getElementById('password-lock');
         lockContainer.classList.add('fade-out');
         
