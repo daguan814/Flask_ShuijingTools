@@ -23,6 +23,9 @@ echo ">>> 拉取最新 GitHub 代码..."
 git fetch origin
 git pull origin main || git pull origin master
 
+# 5. 安装依赖包
+echo ">>> 安装依赖包..."
+pip install -r requirements.txt
 
 # 6. 启动服务（后台运行并记录日志）
 echo ">>> 启动 Flask 项目..."
