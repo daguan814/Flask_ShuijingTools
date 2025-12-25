@@ -15,7 +15,7 @@ cd $PROJECT_DIR || { echo "❌ 目录不存在"; exit 1; }
 
 # 3. 激活 conda 环境
 echo ">>> 激活 conda 环境: $CONDA_ENV"
-conda init
+conda init bash
 conda activate $CONDA_ENV
 
 # 4. 拉取最新代码
