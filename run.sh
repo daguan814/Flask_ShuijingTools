@@ -1,24 +1,27 @@
 #!/bin/bash
+set -e
 
-PROJECT_DIR="/shuijing/Flask_ShuijingTools"
-CONDA_ENV="flask_env"
+echo "========================================="
+echo ">>> 启动 Flask_ShuijingTools"
+echo ">>> 时间: $(date)"
+echo "========================================="
 
-cd "$PROJECT_DIR" || exit 1
+# 1️⃣ 进入项目目录
+cd /shuijing/Flask_ShuijingTools
 
-echo ">>> 拉取最新 GitHub 代码..."
-git pull origin main
+# 2️⃣ 激活 conda
+echo ">>> 激活 conda 环境"
+source /opt/conda/etc/profile.d/conda.sh
+conda activate flask_env
 
-# 确保环境存在
-if ! conda env list | grep -q "^$CONDA_ENV"; then
-  echo ">>> 创建 conda 环境: $CONDA_ENV"
-  conda create -n "$CONDA_ENV" python=3.10 -y
-fi
+# 3️⃣ 当前 conda 环境
+echo ">>> 当前 conda 环境: $CONDA_DEFAULT_ENV"
 
-echo ">>> 使用的 Python:"
-conda run -n "$CONDA_ENV" python -V
+# 4️⃣ 安装 / 更新依赖（日志实时输出）
+echo ">>> 安装 / 更新 Python 依赖（实时日志）"
+pip install --no-cache-dir -r requirements.txt
 
-echo ">>> 安装/更新 Python 依赖（verbose）..."
-conda run -n "$CONDA_ENV" pip install -r requirements.txt -v
-
-echo ">>> 启动 Flask 服务..."
-conda run -n "$CONDA_ENV" python app.py
+# 5️⃣ 启动 Flask（日志直出，不缓冲）
+echo ">>> 启动 Flask 服务（日志实时输出）"
+export PYTHONUNBUFFERED=1
+exec python app.py
