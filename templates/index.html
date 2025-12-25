@@ -4,9 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>文本管理系统</title>
-    <!-- 使用绝对路径确保正确 -->
-    <link href="/text/static/bootstrap/css/bootstrap.min.css" rel="stylesheet">
-    <link href="/text/static/text_sys/style.css" rel="stylesheet">
+    <!-- 使用相对路径的静态文件 -->
+    <link href="{{ url_for('static', filename='bootstrap/css/bootstrap.min.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='text_sys/style.css') }}" rel="stylesheet">
 </head>
 <body>
     <div class="container">
@@ -23,7 +23,7 @@
                 <!-- 添加文本表单 -->
                 <div class="card mb-4">
                     <div class="card-body">
-                        <form action="/text/add" method="POST">
+                        <form action="{{ url_for('text.add_text') }}" method="POST">
                             <div class="mb-3">
                                 <label for="content" class="form-label">添加新文本</label>
                                 <textarea class="form-control" id="content" name="content" rows="3" 
@@ -58,7 +58,7 @@
                                                 </small>
                                             </div>
                                             <div class="flex-shrink-0">
-                                                <a href="/text/delete/{{ text[0] }}" class="btn btn-danger btn-sm">
+                                                <a href="{{ url_for('text.delete_text', text_id=text[0]) }}" class="btn btn-danger btn-sm">
                                                     <i class="bi bi-trash"></i> 删除
                                                 </a>
                                             </div>
@@ -79,8 +79,8 @@
         </div>
     </div>
 
-    <!-- 使用绝对路径确保正确 -->
-    <script src="/text/static/bootstrap/js/bootstrap.bundle.min.js"></script>
-    <script src="/text/static/text_sys/script.js"></script>
+    <!-- 使用相对路径的静态文件 -->
+    <script src="{{ url_for('static', filename='bootstrap/js/bootstrap.bundle.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='text_sys/script.js') }}"></script>
 </body>
 </html>

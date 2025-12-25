@@ -13,11 +13,11 @@ service_dir = os.path.join(current_dir, 'Service')
 if service_dir not in sys.path:
     sys.path.insert(0, service_dir)
 
-# 创建Flask应用，设置静态文件路径
-app = Flask(__name__, static_url_path="/text/static")
+# 创建Flask应用，使用默认静态文件路径
+app = Flask(__name__)
 
-# 注册蓝图，URL前缀设为 /text
-app.register_blueprint(text_bp, url_prefix='/text')
+# 注册蓝图，不使用前缀
+app.register_blueprint(text_bp, url_prefix='/')
 
 if __name__ == '__main__':
     # 确保数据库已初始化
