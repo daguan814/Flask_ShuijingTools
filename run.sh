@@ -4,33 +4,41 @@
 # 作者：shuijing
 # =========================================
 
-# 1. 设置基础变量
+set -e   # 任意一步失败，直接退出（非常重要）
+
+# 1. 基础变量
 PROJECT_DIR="/shuijing/Flask_ShuijingTools"
-LOG_FILE="/shuijing/flask_app.log"
 CONDA_ENV="flask_env"
+LOG_FILE="/shuijing/flask_app.log"
 
-# 2. 切换到项目目录
+echo "========================================="
+echo ">>> 启动 Flask_ShuijingTools"
+echo ">>> 时间: $(date)"
+echo "========================================="
+
+# 2. 进入项目目录
 echo ">>> 切换到项目目录: $PROJECT_DIR"
-cd $PROJECT_DIR || { echo "❌ 目录不存在"; exit 1; }
+cd "$PROJECT_DIR" || {
+  echo "❌ 项目目录不存在，退出"
+  exit 1
+}
 
-# 3. 激活 conda 环境
-echo ">>> 激活 conda 环境: $CONDA_ENV"
-conda init bash
-conda activate $CONDA_ENV
-
-# 4. 拉取最新代码
+# 3. 拉取最新代码
 echo ">>> 拉取最新 GitHub 代码..."
 git fetch origin
-git pull origin main || git pull origin master
 
-# 5. 安装依赖包
-echo ">>> 安装依赖包..."
-pip install -r requirements.txt
+# 自动识别 main / master
+BRANCH=$(git symbolic-ref --short HEAD)
+echo ">>> 当前分支: $BRANCH"
 
-# 6. 启动服务（后台运行并记录日志）
-echo ">>> 启动 Flask 项目..."
-python app.py
+git pull origin "$BRANCH"
 
-# 7. 显示运行状态
-echo "✅ Flask 项目已启动！"
+# 4. （可选）安装依赖 —— 建议只在首次或你明确需要时打开
+# echo ">>> 安装 Python 依赖..."
+# conda run -n "$CONDA_ENV" pip install -r requirements.txt
 
+# 5. 启动 Flask 服务
+echo ">>> 启动 Flask 服务..."
+echo ">>> 使用 conda 环境: $CONDA_ENV"
+
+exec conda run -n "$CONDA_ENV" python app.py >> "$LOG_FILE" 2>&1
