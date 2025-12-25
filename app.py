@@ -13,9 +13,10 @@ service_dir = os.path.join(current_dir, 'Service')
 if service_dir not in sys.path:
     sys.path.insert(0, service_dir)
 
-app = Flask(__name__)
+# 创建Flask应用，设置静态文件路径
+app = Flask(__name__, static_url_path="/text/static")
 
-# 设置应用根路径为 /text
+# 设置应用根路径
 app.config['APPLICATION_ROOT'] = '/text'
 
 # 注册蓝图，URL前缀设为根路径
@@ -28,6 +29,8 @@ def before_request():
     # 如果请求头中包含X-Forwarded-Prefix，使用它作为URL前缀
     if 'X-Forwarded-Prefix' in request.headers:
         app.config['APPLICATION_ROOT'] = request.headers['X-Forwarded-Prefix']
+        # 动态更新静态文件路径
+        app.static_url_path = request.headers['X-Forwarded-Prefix'] + '/static'
 
 if __name__ == '__main__':
     # 确保数据库已初始化
