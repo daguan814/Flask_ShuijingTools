@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文本管理系统</title>
+    <!-- Bootstrap CSS -->
+    <link href="{{ url_for('static', filename='bootstrap/css/bootstrap.min.css') }}" rel="stylesheet">
+    <!-- 自定义CSS -->
+    <link href="{{ url_for('static', filename='text_sys/style.css') }}" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-12">
+                <!-- 标题卡片 -->
+                <div class="card mb-4">
+                    <div class="card-header text-center py-4">
+                        <h1 class="mb-0">📝 文本管理系统</h1>
+                        <p class="mb-0 mt-2 opacity-75">简单、美观的文本管理工具</p>
+                    </div>
+                </div>
+
+                <!-- 添加文本表单 -->
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <form action="{{ url_for('text.add_text') }}" method="POST">
+                            <div class="mb-3">
+                                <label for="content" class="form-label">添加新文本</label>
+                                <textarea class="form-control" id="content" name="content" rows="3" 
+                                          placeholder="请输入您要保存的文本内容...（支持链接自动识别）" required></textarea>
+                            </div>
+                            <div class="text-end">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-plus-circle"></i> 添加文本
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- 文本列表 -->
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">📋 已保存的文本</h5>
+                    </div>
+                    <div class="card-body">
+                        {% if texts %}
+                            {% for text in texts %}
+                                <div class="card text-card mb-3">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between align-items-start">
+                                            <div class="flex-grow-1 me-3">
+                                                <div class="text-content mb-2" id="text-content-{{ text[0] }}">
+                                                    {{ text[1] | trim }}
+                                                </div>
+                                                <small class="text-muted">
+                                                    <i class="bi bi-clock"></i> {{ text[2] }}
+                                                </small>
+                                            </div>
+                                            <div class="flex-shrink-0">
+                                                <a href="{{ url_for('text.delete_text', text_id=text[0]) }}" class="btn btn-danger btn-sm">
+                                                    <i class="bi bi-trash"></i> 删除
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="empty-state">
+                                <i class="bi bi-journal-text"></i>
+                                <h4>还没有保存任何文本</h4>
+                                <p>在上方输入框中添加您的第一条文本吧！</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="{{ url_for('static', filename='bootstrap/js/bootstrap.bundle.min.js') }}"></script>
+    <!-- 自定义JS -->
+    <script src="{{ url_for('static', filename='text_sys/script.js') }}"></script>
+</body>
+</html>
