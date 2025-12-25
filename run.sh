@@ -1,20 +1,24 @@
 #!/bin/bash
-# Flask_ShuijingTools 启动脚本（容器简化实用版）
 
 PROJECT_DIR="/shuijing/Flask_ShuijingTools"
 CONDA_ENV="flask_env"
 
-echo ">>> 切换到项目目录: $PROJECT_DIR"
-cd "$PROJECT_DIR" || {
-  echo "❌ 项目目录不存在"
-  exit 1
-}
+cd "$PROJECT_DIR" || exit 1
 
 echo ">>> 拉取最新 GitHub 代码..."
 git pull origin main
 
-echo ">>> 安装/更新 Python 依赖..."
-conda run -n "$CONDA_ENV" pip install -r requirements.txt
+# 确保环境存在
+if ! conda env list | grep -q "^$CONDA_ENV"; then
+  echo ">>> 创建 conda 环境: $CONDA_ENV"
+  conda create -n "$CONDA_ENV" python=3.10 -y
+fi
+
+echo ">>> 使用的 Python:"
+conda run -n "$CONDA_ENV" python -V
+
+echo ">>> 安装/更新 Python 依赖（verbose）..."
+conda run -n "$CONDA_ENV" pip install -r requirements.txt -v
 
 echo ">>> 启动 Flask 服务..."
 conda run -n "$CONDA_ENV" python app.py
