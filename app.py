@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, request
 import ssl
 import os
 import sys
@@ -15,8 +15,19 @@ if service_dir not in sys.path:
 
 app = Flask(__name__)
 
-# 注册蓝图
+# 设置应用根路径为 /text
+app.config['APPLICATION_ROOT'] = '/text'
+
+# 注册蓝图，URL前缀设为根路径
 app.register_blueprint(text_bp, url_prefix='/')
+
+# 添加反向代理支持中间件
+@app.before_request
+def before_request():
+    """处理反向代理环境下的URL生成"""
+    # 如果请求头中包含X-Forwarded-Prefix，使用它作为URL前缀
+    if 'X-Forwarded-Prefix' in request.headers:
+        app.config['APPLICATION_ROOT'] = request.headers['X-Forwarded-Prefix']
 
 if __name__ == '__main__':
     # 确保数据库已初始化
