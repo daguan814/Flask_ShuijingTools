@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>文本管理系统</title>
-    <!-- 使用相对路径的静态文件 -->
+    <!-- 使用url_for生成静态文件路径 -->
     <link href="{{ url_for('static', filename='bootstrap/css/bootstrap.min.css') }}" rel="stylesheet">
     <link href="{{ url_for('static', filename='text_sys/style.css') }}" rel="stylesheet">
 </head>
@@ -79,7 +79,7 @@
         </div>
     </div>
 
-    <!-- 使用相对路径的静态文件 -->
+    <!-- 使用url_for生成静态文件路径 -->
     <script src="{{ url_for('static', filename='bootstrap/js/bootstrap.bundle.min.js') }}"></script>
     <script src="{{ url_for('static', filename='text_sys/script.js') }}"></script>
 </body>
