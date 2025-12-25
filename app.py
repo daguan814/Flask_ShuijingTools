@@ -16,8 +16,8 @@ if service_dir not in sys.path:
 # 创建Flask应用，设置静态文件URL前缀为'/text/static'
 app = Flask(__name__, static_url_path='/text/static')
 
-# 注册蓝图，使用'/text'作为前缀
-app.register_blueprint(text_bp, url_prefix='/text')
+# 注册蓝图，使用根路径作为前缀
+app.register_blueprint(text_bp, url_prefix='/')
 
 if __name__ == '__main__':
     # 确保数据库已初始化
