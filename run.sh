@@ -9,14 +9,19 @@ echo "========================================="
 # 1️⃣ 进入项目目录
 cd /shuijing/Flask_ShuijingTools
 
-# 2️⃣ 拉取 GitHub 最新代码
-echo ">>> 拉取 GitHub 最新代码..."
-git fetch origin
-
+# 2️⃣ 拉取 GitHub 最新代码（完全覆盖本地）
+echo ">>> 拉取 GitHub 最新代码（覆盖本地所有改动）..."
 BRANCH=$(git rev-parse --abbrev-ref HEAD)
 echo ">>> 当前分支: $BRANCH"
 
-git pull origin "$BRANCH"
+# 获取远程最新状态
+git fetch origin
+
+# 强制重置本地分支到远程分支
+git reset --hard origin/"$BRANCH"
+
+# 清理未跟踪文件（可选，确保完全一致）
+git clean -fd
 
 # 3️⃣ 激活 conda
 echo ">>> 激活 conda 环境"
