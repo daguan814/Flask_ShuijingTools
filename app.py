@@ -14,7 +14,7 @@ if service_dir not in sys.path:
     sys.path.insert(0, service_dir)
 
 # 创建Flask应用，使用默认配置
-app = Flask(__name__)
+app = Flask(__name__, static_url_path='/static')
 
 # 注册蓝图，使用根路径作为前缀
 app.register_blueprint(text_bp, url_prefix='/')

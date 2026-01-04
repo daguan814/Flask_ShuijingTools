@@ -1,35 +1,54 @@
-import sqlite3
+import mysql.connector
 import os
 
 
 class DatabaseManager:
     def __init__(self):
-        self.db_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'db', 'texts.db')
+        self.host = "192.168.100.242"
+        self.user = "root"
+        self.password = "Lhf134652"
+        self.database = "shuijingTools"
         self.init_db()
 
     def init_db(self):
         """初始化数据库和表结构"""
-        # 确保db目录存在
-        db_dir = os.path.dirname(self.db_path)
-        if not os.path.exists(db_dir):
-            os.makedirs(db_dir)
-
-        conn = sqlite3.connect(self.db_path)
-        c = conn.cursor()
-        c.execute('''
-                  CREATE TABLE IF NOT EXISTS texts
-                  (
-                      id INTEGER PRIMARY KEY AUTOINCREMENT,
-                      content TEXT NOT NULL,
-                      created_at TEXT
-                  )
-                  ''')
-        conn.commit()
-        conn.close()
+        try:
+            conn = mysql.connector.connect(
+                host=self.host,
+                user=self.user,
+                password=self.password
+            )
+            c = conn.cursor()
+            
+            # 创建数据库（如果不存在）
+            c.execute(f"CREATE DATABASE IF NOT EXISTS {self.database}")
+            conn.commit()
+            conn.close()
+            
+            # 连接到具体数据库并创建表
+            conn = self.get_connection()
+            c = conn.cursor()
+            c.execute('''
+                CREATE TABLE IF NOT EXISTS texts (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    content TEXT NOT NULL,
+                    created_at DATETIME
+                )
+            ''')
+            conn.commit()
+            conn.close()
+            print("MySQL数据库初始化成功")
+        except Exception as e:
+            print(f"数据库初始化失败: {e}")
 
     def get_connection(self):
         """获取数据库连接"""
-        return sqlite3.connect(self.db_path)
+        return mysql.connector.connect(
+            host=self.host,
+            user=self.user,
+            password=self.password,
+            database=self.database
+        )
 
 
 # 创建全局数据库管理器实例
