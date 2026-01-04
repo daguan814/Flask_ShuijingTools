@@ -1,6 +1,4 @@
 import mysql.connector
-import os
-
 
 class DatabaseManager:
     def __init__(self):
@@ -8,7 +6,6 @@ class DatabaseManager:
         self.user = "root"
         self.password = "Lhf134652"
         self.database = "shuijingTools"
-        self.init_db()
 
     def init_db(self):
         """初始化数据库和表结构"""
@@ -49,7 +46,6 @@ class DatabaseManager:
             password=self.password,
             database=self.database
         )
-
 
 # 创建全局数据库管理器实例
 db_manager = DatabaseManager()

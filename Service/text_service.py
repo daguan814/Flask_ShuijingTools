@@ -1,23 +1,15 @@
-import mysql.connector
-import os
 from datetime import datetime
-
+# 导入数据库管理器，使用统一的数据库配置
+from db.database import db_manager
 
 class TextService:
     def __init__(self):
-        self.host = "192.168.100.242"
-        self.user = "root"
-        self.password = "Lhf134652"
-        self.database = "shuijingTools"
+        # 不再需要单独配置数据库连接，使用db_manager
+        pass
 
     def get_connection(self):
-        """获取数据库连接"""
-        return mysql.connector.connect(
-            host=self.host,
-            user=self.user,
-            password=self.password,
-            database=self.database
-        )
+        """获取数据库连接（使用统一的db_manager）"""
+        return db_manager.get_connection()
 
     def get_all_texts(self):
         """获取所有文本"""
@@ -55,7 +47,6 @@ class TextService:
         affected_rows = c.rowcount
         conn.close()
         return affected_rows > 0
-
 
 # 创建全局文本服务实例
 text_service = TextService()
