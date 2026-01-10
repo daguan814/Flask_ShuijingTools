@@ -1,4 +1,6 @@
 import mysql.connector
+from mysql.connector import pooling
+
 
 class DatabaseManager:
     def __init__(self):
@@ -6,46 +8,70 @@ class DatabaseManager:
         self.user = "root"
         self.password = "Lhf134652"
         self.database = "shuijingTools"
+        self._pool = None
 
     def init_db(self):
-        """初始化数据库和表结构"""
+        """Initialize database and schema."""
         try:
             conn = mysql.connector.connect(
                 host=self.host,
                 user=self.user,
-                password=self.password
+                password=self.password,
+                connection_timeout=5
             )
             c = conn.cursor()
-            
-            # 创建数据库（如果不存在）
+
             c.execute(f"CREATE DATABASE IF NOT EXISTS {self.database}")
             conn.commit()
             conn.close()
-            
-            # 连接到具体数据库并创建表
+
             conn = self.get_connection()
             c = conn.cursor()
-            c.execute('''
+            c.execute(
+                """
                 CREATE TABLE IF NOT EXISTS texts (
                     id INT AUTO_INCREMENT PRIMARY KEY,
                     content TEXT NOT NULL,
                     created_at DATETIME
                 )
-            ''')
+                """
+            )
+            c.execute(
+                """
+                CREATE TABLE IF NOT EXISTS operation_logs (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    action VARCHAR(32) NOT NULL,
+                    text_id INT NULL,
+                    content TEXT NULL,
+                    client_ip VARCHAR(45) NULL,
+                    created_at DATETIME
+                )
+                """
+            )
             conn.commit()
             conn.close()
-            print("MySQL数据库初始化成功")
+            print("MySQL database initialized")
         except Exception as e:
-            print(f"数据库初始化失败: {e}")
+            print(f"Database init failed: {e}")
 
-    def get_connection(self):
-        """获取数据库连接"""
-        return mysql.connector.connect(
+    def init_pool(self, pool_size=5):
+        """Initialize a small connection pool for faster remote requests."""
+        self._pool = pooling.MySQLConnectionPool(
+            pool_name="shuijing_pool",
+            pool_size=pool_size,
+            pool_reset_session=True,
             host=self.host,
             user=self.user,
             password=self.password,
-            database=self.database
+            database=self.database,
+            connection_timeout=5
         )
 
-# 创建全局数据库管理器实例
+    def get_connection(self):
+        """Get database connection."""
+        if self._pool is None:
+            self.init_pool()
+        return self._pool.get_connection()
+
+
 db_manager = DatabaseManager()

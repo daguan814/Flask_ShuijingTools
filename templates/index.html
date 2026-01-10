@@ -3,16 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>文本管理系统</title>
-    <!-- 本地 Bootstrap CSS -->
+    <title>水镜共享中心</title>
     <link href="/static/bootstrap/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Bootstrap Icons CDN (由于是图标库，继续使用CDN) -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
-    <!-- 本地自定义 CSS -->
+    <link href="/static/bootstrap-icons/bootstrap-icons.min.css" rel="stylesheet">
     <link href="/static/text.css" rel="stylesheet">
+    <link rel="icon" href="/static/icon.svg" type="image/svg+xml">
 </head>
 <body>
-    <!-- 密码锁界面 -->
     <div id="lockScreen" class="lock-screen">
         <div class="lock-container">
             <div class="lock-card">
@@ -24,7 +21,7 @@
                     <div class="password-display">
                         <span id="passwordDisplay" class="password-dots">••••</span>
                     </div>
-                    
+
                     <div class="keypad">
                         <button class="keypad-btn" onclick="addNumber(1)">1</button>
                         <button class="keypad-btn" onclick="addNumber(2)">2</button>
@@ -41,80 +38,154 @@
         </div>
     </div>
 
-    <!-- 主内容区域 -->
     <div id="mainContent" class="container" style="display: none;">
         <div class="row justify-content-center">
             <div class="col-12">
-                <!-- 标题卡片 -->
                 <div class="card mb-4">
                     <div class="card-header text-center py-4">
-                        <h1 class="mb-0">📝 文本管理系统</h1>
-                        <p class="mb-0 mt-2 opacity-75">简单、美观的文本管理工具</p>
+                        <h1 class="mb-0">水镜共享中心</h1>
+                        <p class="mb-0 mt-2 opacity-75">文本管理 + 文件中转</p>
                     </div>
                 </div>
 
-                <!-- 添加文本表单 -->
-                <div class="card mb-4">
-                    <div class="card-body">
-                        <form action="/add" method="POST">
-                            <div class="mb-3">
-                                <label for="content" class="form-label">添加新文本</label>
-                                <textarea class="form-control" id="content" name="content" rows="3" 
+                <div class="mode-switch" id="modeSwitch">
+                    <button type="button" class="mode-btn active" data-target="text-section">文本管理</button>
+                    <button type="button" class="mode-btn" data-target="file-section">文件管理</button>
+                </div>
+
+                <div id="text-section" class="content-section">
+                    <div class="card mb-4">
+                        <div class="card-body">
+                            <form action="/add" method="POST">
+                                <div class="mb-3">
+                                    <label for="content" class="form-label">添加新文本</label>
+                                    <textarea class="form-control" id="content" name="content" rows="3"
                                           placeholder="请输入您要保存的文本内容...（支持链接自动识别）" required></textarea>
-                            </div>
-                            <div class="text-end">
-                                <button type="submit" class="btn btn-primary">
-                                    <i class="bi bi-plus-circle"></i> 添加文本
-                                </button>
-                            </div>
-                        </form>
+                                </div>
+                                <div class="text-end">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="bi bi-plus-circle"></i> 添加文本
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
                     </div>
-                </div>
 
-                <!-- 文本列表 -->
-                <div class="card">
-                    <div class="card-header">
-                        <h5 class="mb-0">📋 已保存的文本</h5>
-                    </div>
-                    <div class="card-body">
-                        {% if texts %}
-                            {% for text in texts %}
-                                <div class="card text-card mb-3">
-                                    <div class="card-body">
-                                        <div class="d-flex justify-content-between align-items-start">
-                                            <div class="flex-grow-1 me-3">
-                                                <div class="text-content mb-2" id="text-content-{{ text[0] }}">
-                                                    {{ text[1] | trim }}
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">已保存的文本</h5>
+                        </div>
+                        <div class="card-body">
+                            {% if texts %}
+                                {% for text in texts %}
+                                    <div class="card text-card mb-3">
+                                        <div class="card-body">
+                                            <div class="d-flex justify-content-between align-items-start">
+                                                <div class="flex-grow-1 me-3">
+                                                    <div class="text-content mb-2" id="text-content-{{ text[0] }}">
+                                                        {{ text[1] | trim }}
+                                                    </div>
+                                                    <small class="text-muted">
+                                                        <i class="bi bi-clock"></i> {{ text[2] }}
+                                                    </small>
                                                 </div>
-                                                <small class="text-muted">
-                                                    <i class="bi bi-clock"></i> {{ text[2] }}
-                                                </small>
-                                            </div>
-                                            <div class="flex-shrink-0">
-                                                <a href="/delete/{{ text[0] }}" class="btn btn-danger btn-sm">
-                                                    <i class="bi bi-trash"></i> 删除
-                                                </a>
+                                                <div class="flex-shrink-0">
+                                                    <a href="/delete/{{ text[0] }}" class="btn btn-danger btn-sm">
+                                                        <i class="bi bi-trash"></i> 删除
+                                                    </a>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
+                                {% endfor %}
+                            {% else %}
+                                <div class="empty-state">
+                                    <i class="bi bi-journal-text"></i>
+                                    <h4>还没有保存任何文本</h4>
+                                    <p>在上方输入框中添加您的第一条文本吧</p>
                                 </div>
-                            {% endfor %}
-                        {% else %}
-                            <div class="empty-state">
-                                <i class="bi bi-journal-text"></i>
-                                <h4>还没有保存任何文本</h4>
-                                <p>在上方输入框中添加您的第一条文本吧！</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <div id="file-section" class="content-section section-hidden">
+                    <div class="card mb-4">
+                        <div class="card-body">
+                            <h5 class="card-title">文件中转</h5>
+                            <p class="text-muted small mb-3">建议上传 ZIP 包，单次可选择多个文件。</p>
+                            <form id="uploadForm" action="/upload" method="POST" enctype="multipart/form-data">
+                                <div class="mb-3">
+                                    <label class="form-label">选择文件（可多选）</label>
+                                    <input class="form-control" type="file" id="uploadFiles" name="files" multiple>
+                                    <div class="form-text" id="fileHint">已选择 0 个文件</div>
+                                    <div class="file-name-list" id="fileNames"></div>
+                                </div>
+                                <div class="text-end">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="bi bi-upload"></i> 上传
+                                    </button>
+                                </div>
+                            </form>
+                            <div class="upload-progress" id="uploadProgress" style="display: none;">
+                                <div class="progress">
+                                    <div class="progress-bar" id="uploadProgressBar" role="progressbar" style="width: 0%"></div>
+                                </div>
+                                <div class="progress-text" id="uploadProgressText">0%</div>
                             </div>
-                        {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0">已上传文件</h5>
+                        </div>
+                        <div class="card-body" id="fileList">
+                            {% if uploads %}
+                                {% for f in uploads %}
+                                    <div class="card text-card mb-3">
+                                        <div class="card-body">
+                                            <div class="d-flex justify-content-between align-items-start">
+                                                <div class="flex-grow-1 me-3">
+                                                    <div class="text-content mb-2">
+                                                        {{ f.path }}
+                                                    </div>
+                                                    <small class="text-muted">
+                                                        <i class="bi bi-hdd"></i> {{ f.size }}
+                                                    </small>
+                                                </div>
+                                                <div class="flex-shrink-0">
+                                                    <div class="file-actions">
+                                                        <a href="/files/download/{{ f.path }}" class="btn btn-outline-primary btn-sm">
+                                                            <i class="bi bi-download"></i> 下载
+                                                        </a>
+                                                        <form class="file-delete-form" action="/files/delete" method="POST">
+                                                            <input type="hidden" name="path" value="{{ f.path }}">
+                                                            <button type="submit" class="btn btn-outline-danger btn-sm">
+                                                                <i class="bi bi-trash"></i> 删除
+                                                            </button>
+                                                        </form>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            {% else %}
+                                <div class="empty-state">
+                                    <i class="bi bi-cloud-upload"></i>
+                                    <h4>还没有上传任何文件</h4>
+                                    <p>你可以在上方选择文件进行上传</p>
+                                </div>
+                            {% endif %}
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- 本地 Bootstrap JS -->
     <script src="/static/bootstrap/js/bootstrap.bundle.min.js"></script>
-    <!-- 本地自定义 JS -->
     <script src="/static/text.js"></script>
 </body>
 </html>

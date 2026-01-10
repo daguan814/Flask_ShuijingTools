@@ -1,8 +1,9 @@
-/* text.css */
+﻿/* text.css */
 body {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #ffe2c2 0%, #ffbf9e 100%);
     min-height: 100vh;
     padding: 20px 0;
+    color: #1f2937;
 }
 
 .container {
@@ -17,7 +18,7 @@ body {
 }
 
 .card-header {
-    background: linear-gradient(45deg, #6a11cb 0%, #2575fc 100%);
+    background: linear-gradient(45deg, #ffc686 0%, #ff9f80 100%);
     color: white;
     border-radius: 15px 15px 0 0 !important;
     border: none;
@@ -32,7 +33,7 @@ body {
 }
 
 .btn-primary {
-    background: linear-gradient(45deg, #6a11cb 0%, #2575fc 100%);
+    background: linear-gradient(45deg, #ffc686 0%, #ff9f80 100%);
     border: none;
     border-radius: 25px;
     padding: 10px 30px;
@@ -41,7 +42,48 @@ body {
 .btn-danger {
     border-radius: 20px;
     padding: 5px 15px;
-    white-space: nowrap; /* 防止按钮文字换行 */
+    white-space: nowrap;
+}
+
+.file-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.file-actions form {
+    margin: 0;
+}
+
+.file-name-list {
+    font-size: 0.875rem;
+    color: #6c757d;
+    margin-top: 6px;
+}
+
+.file-name-list div {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.upload-progress {
+    margin-top: 12px;
+}
+
+.upload-progress .progress {
+    height: 10px;
+    background-color: rgba(255, 255, 255, 0.6);
+}
+
+.upload-progress .progress-bar {
+    background: linear-gradient(45deg, #ffc686 0%, #ff9f80 100%);
+}
+
+.progress-text {
+    margin-top: 6px;
+    font-size: 0.85rem;
+    color: #6c757d;
+    text-align: right;
 }
 
 .empty-state {
@@ -59,7 +101,6 @@ body {
 .text-content {
     white-space: pre-wrap;
     word-wrap: break-word;
-    /* 移除文本内容的多余空格 */
     white-space: pre-line;
 }
 
@@ -72,17 +113,48 @@ body {
     color: #0a58ca;
 }
 
-/* 确保删除按钮容器不会换行 */
 .flex-shrink-0 {
     flex-shrink: 0;
 }
 
-/* 文本内容区域有足够的右边距 */
 .me-3 {
     margin-right: 1rem;
 }
 
-/* 密码锁样式 */
+.mode-switch {
+    display: flex;
+    gap: 6px;
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 999px;
+    padding: 6px;
+    margin-bottom: 20px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+}
+
+.mode-btn {
+    flex: 1;
+    border: none;
+    background: transparent;
+    border-radius: 999px;
+    padding: 10px 0;
+    font-weight: 600;
+    color: #6c757d;
+}
+
+.mode-btn.active {
+    color: #fff;
+    background: linear-gradient(45deg, #ffc686 0%, #ff9f80 100%);
+    box-shadow: 0 6px 14px rgba(255, 159, 128, 0.25);
+}
+
+.content-section {
+    display: block;
+}
+
+.section-hidden {
+    display: none;
+}
+
 .lock-screen {
     display: flex;
     align-items: center;
@@ -93,7 +165,7 @@ body {
     left: 0;
     right: 0;
     bottom: 0;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #ffe2c2 0%, #ffbf9e 100%);
     z-index: 9999;
 }
 
@@ -112,7 +184,7 @@ body {
 }
 
 .lock-header {
-    background: linear-gradient(45deg, #6a11cb 0%, #2575fc 100%);
+    background: linear-gradient(45deg, #ffc686 0%, #ff9f80 100%);
     color: white;
     border-radius: 20px 20px 0 0;
     padding: 30px;
@@ -153,7 +225,7 @@ body {
     height: 60px;
     border: none;
     border-radius: 10px;
-    background: linear-gradient(45deg, #6a11cb 0%, #2575fc 100%);
+    background: linear-gradient(45deg, #ffc686 0%, #ff9f80 100%);
     color: white;
     font-size: 1.2rem;
     font-weight: bold;
@@ -167,4 +239,102 @@ body {
 
 .keypad-btn:active {
     transform: translateY(0);
+}
+
+@media (max-width: 576px) {
+    body {
+        padding: 12px 0;
+    }
+
+    .container {
+        padding-left: 12px;
+        padding-right: 12px;
+    }
+
+    .card {
+        border-radius: 12px;
+        margin-bottom: 16px;
+    }
+
+    .card-header {
+        padding: 16px;
+        border-radius: 12px 12px 0 0 !important;
+    }
+
+    .card-header h1 {
+        font-size: 1.35rem;
+    }
+
+    .text-card .d-flex {
+        flex-direction: column;
+        align-items: flex-start !important;
+    }
+
+    .text-card .flex-shrink-0 {
+        margin-top: 10px;
+        width: 100%;
+    }
+
+    .text-card .btn-danger {
+        width: 100%;
+        padding: 8px 12px;
+    }
+
+    .file-actions {
+        width: 100%;
+        flex-direction: column;
+    }
+
+    .file-actions .btn {
+        width: 100%;
+    }
+
+    .me-3 {
+        margin-right: 0;
+    }
+
+    .btn-primary {
+        width: 100%;
+        padding: 10px 16px;
+    }
+
+    .mode-switch {
+        margin-bottom: 16px;
+    }
+
+    .mode-btn {
+        padding: 8px 0;
+        font-size: 0.95rem;
+    }
+
+    .empty-state {
+        padding: 40px 16px;
+    }
+
+    .empty-state i {
+        font-size: 3rem;
+    }
+
+    .lock-container {
+        max-width: 360px;
+        padding: 12px;
+    }
+
+    .lock-header {
+        padding: 20px;
+    }
+
+    .lock-body {
+        padding: 20px;
+    }
+
+    .password-display {
+        font-size: 1.2rem;
+        min-height: 52px;
+    }
+
+    .keypad-btn {
+        height: 52px;
+        font-size: 1.1rem;
+    }
 }
