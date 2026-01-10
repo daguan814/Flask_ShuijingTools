@@ -14,7 +14,7 @@ class TextService:
         """Get all saved texts."""
         conn = self.get_connection()
         c = conn.cursor(dictionary=True)
-        c.execute('SELECT * FROM texts ORDER BY created_at DESC')
+        c.execute('SELECT * FROM texts ORDER BY id DESC')
         texts = c.fetchall()
         conn.close()
 
