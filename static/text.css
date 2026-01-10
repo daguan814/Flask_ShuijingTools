@@ -155,6 +155,18 @@ body {
     display: none;
 }
 
+#mainContent {
+    display: none;
+}
+
+html.logged-in #mainContent {
+    display: block;
+}
+
+html.logged-in #lockScreen {
+    display: none;
+}
+
 .lock-screen {
     display: flex;
     align-items: center;

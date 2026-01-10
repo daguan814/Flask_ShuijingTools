@@ -66,6 +66,7 @@ function checkPassword() {
 }
 
 function showMainContent() {
+    document.documentElement.classList.add('logged-in');
     document.getElementById('lockScreen').style.display = 'none';
     document.getElementById('mainContent').style.display = 'block';
 
