@@ -14,7 +14,7 @@ class TextService:
         """Get all saved texts."""
         conn = self.get_connection()
         c = conn.cursor(dictionary=True)
-        c.execute('SELECT * FROM texts ORDER BY id DESC')
+        c.execute('SELECT * FROM texts WHERE is_active = 1 ORDER BY id DESC')
         texts = c.fetchall()
         conn.close()
 
@@ -39,7 +39,10 @@ class TextService:
         """Delete a text."""
         conn = self.get_connection()
         c = conn.cursor()
-        c.execute('DELETE FROM texts WHERE id = %s', (text_id,))
+        c.execute(
+            'UPDATE texts SET is_active = 0 WHERE id = %s AND is_active = 1',
+            (text_id,)
+        )
         conn.commit()
         affected_rows = c.rowcount
         conn.close()

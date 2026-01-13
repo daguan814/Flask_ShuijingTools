@@ -25,20 +25,9 @@ def get_client_ip():
 
 
 def normalize_upload_path(filename):
-    raw = filename.replace('\\', '/')
-    parts = []
-    for part in raw.split('/'):
-        part = part.strip()
-        if not part or part in ('.', '..'):
-            continue
-        part = re.sub(r'[<>:"|?*\\x00-\\x1f]', '', part)
-        part = part.rstrip(' .')
-        if not part:
-            continue
-        parts.append(part)
-    if not parts:
+    if not filename:
         return None
-    return os.path.join(*parts)
+    return filename
 
 
 def format_size(num_bytes):
@@ -61,11 +50,15 @@ def list_uploads():
             rel_path = os.path.relpath(full_path, base_dir).replace(os.sep, '/')
             if '/' in rel_path:
                 continue
+            mtime = os.path.getmtime(full_path)
             uploads.append({
                 'path': rel_path,
-                'size': format_size(os.path.getsize(full_path))
+                'size': format_size(os.path.getsize(full_path)),
+                'mtime': mtime
             })
-    uploads.sort(key=lambda item: item['path'].lower())
+    uploads.sort(key=lambda item: item['mtime'], reverse=True)
+    for item in uploads:
+        item.pop('mtime', None)
     return uploads
 
 
@@ -81,15 +74,12 @@ def add_text():
     content = request.form.get('content')
     if content:
         text_id = text_service.add_text(content)
-        text_service.add_log('add', text_id=text_id, content=content, client_ip=get_client_ip())
     return redirect(url_for('text.index'))
 
 
 @text_bp.route('/delete/<int:text_id>')
 def delete_text(text_id):
     deleted = text_service.delete_text(text_id)
-    if deleted:
-        text_service.add_log('delete', text_id=text_id, client_ip=get_client_ip())
     return redirect(url_for('text.index'))
 
 

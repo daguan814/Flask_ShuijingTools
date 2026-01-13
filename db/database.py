@@ -32,7 +32,8 @@ class DatabaseManager:
                 CREATE TABLE IF NOT EXISTS texts (
                     id INT AUTO_INCREMENT PRIMARY KEY,
                     content TEXT NOT NULL,
-                    created_at DATETIME
+                    created_at DATETIME,
+                    is_active TINYINT(1) NOT NULL DEFAULT 1
                 )
                 """
             )
@@ -49,6 +50,16 @@ class DatabaseManager:
                 """
             )
             conn.commit()
+            c.execute(
+                """
+                SELECT COUNT(*) FROM information_schema.COLUMNS
+                WHERE TABLE_SCHEMA = %s AND TABLE_NAME = 'texts' AND COLUMN_NAME = 'is_active'
+                """,
+                (self.database,)
+            )
+            if c.fetchone()[0] == 0:
+                c.execute("ALTER TABLE texts ADD COLUMN is_active TINYINT(1) NOT NULL DEFAULT 1")
+                c.execute("UPDATE texts SET is_active = 1 WHERE is_active IS NULL")
             conn.close()
             print("MySQL database initialized")
         except Exception as e:

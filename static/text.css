@@ -26,6 +26,11 @@ body {
 
 .text-card {
     transition: transform 0.3s ease;
+    text-align: left;
+}
+
+.text-card .card-body {
+    text-align: left;
 }
 
 .text-card:hover {
@@ -99,22 +104,39 @@ body {
 }
 
 .text-content {
-    white-space: pre-wrap;
-    word-wrap: break-word;
     white-space: pre-line;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+    text-align: left !important;
+    display: block;
+    width: 100%;
+}
+
+.text-content * {
+    text-align: left !important;
 }
 
 .text-content a {
     color: #0d6efd;
     text-decoration: underline;
+    text-align: left;
 }
 
 .text-content a:hover {
     color: #0a58ca;
 }
 
+.text-card small,
+#fileList small {
+    text-align: left;
+}
+
 .flex-shrink-0 {
     flex-shrink: 0;
+}
+
+.text-card .flex-grow-1 {
+    min-width: 0;
 }
 
 .me-3 {
@@ -149,6 +171,14 @@ body {
 
 .content-section {
     display: block;
+}
+
+.content-section .card-body {
+    text-align: left;
+}
+
+#fileList {
+    text-align: left;
 }
 
 .section-hidden {
