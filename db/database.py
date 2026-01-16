@@ -49,6 +49,17 @@ class DatabaseManager:
                 )
                 """
             )
+            c.execute(
+                """
+                CREATE TABLE IF NOT EXISTS file_trash (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    original_path TEXT NOT NULL,
+                    trash_path TEXT NOT NULL,
+                    size BIGINT NOT NULL,
+                    deleted_at DATETIME
+                )
+                """
+            )
             conn.commit()
             c.execute(
                 """

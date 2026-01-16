@@ -58,7 +58,7 @@
             <div class="col-12">
                 <div class="card mb-4">
                     <div class="card-header text-center py-4">
-                        <h1 class="mb-0">水镜共享中心</h1>
+                        <h1 class="mb-0" id="mainTitle">水镜共享中心</h1>
                         <p class="mb-0 mt-2 opacity-75">文本管理 + 文件中转</p>
                     </div>
                 </div>
@@ -90,7 +90,7 @@
                         <div class="card-header">
                             <h5 class="mb-0">已保存的文本</h5>
                         </div>
-                        <div class="card-body">
+                        <div class="card-body" id="textList">
                             {% if texts %}
                                 {% for text in texts %}
                                     <div class="card text-card mb-3">
@@ -194,6 +194,32 @@
                                 </div>
                             {% endif %}
                         </div>
+                    </div>
+                </div>
+
+                <div id="trash-section" class="content-section section-hidden">
+                    <div class="card mb-4">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0"><i class="bi bi-trash"></i> 垃圾桶</h5>
+                            <button type="button" class="btn btn-light btn-sm" id="trashCloseBtn">返回</button>
+                        </div>
+                        <div class="card-body">
+                            <p class="text-muted small mb-0">这里可以还原已删除的文本或文件。</p>
+                        </div>
+                    </div>
+
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0">已删除文本</h5>
+                        </div>
+                        <div class="card-body" id="trashTextList"></div>
+                    </div>
+
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0">已删除文件</h5>
+                        </div>
+                        <div class="card-body" id="trashFileList"></div>
                     </div>
                 </div>
             </div>

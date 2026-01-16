@@ -12,7 +12,10 @@ from flask import (
 from werkzeug.utils import safe_join
 import os
 import re
+import shutil
+import uuid
 from Service.text_service import text_service
+from Service.trash_service import trash_service
 
 text_bp = Blueprint('text', __name__)
 
@@ -60,6 +63,24 @@ def list_uploads():
     for item in uploads:
         item.pop('mtime', None)
     return uploads
+
+
+def ensure_trash_dir(base_dir):
+    trash_dir = os.path.join(base_dir, '.trash')
+    os.makedirs(trash_dir, exist_ok=True)
+    return trash_dir
+
+
+def build_restore_path(base_dir, original_path, file_id):
+    safe_path = safe_join(base_dir, original_path)
+    if safe_path is None:
+        return None, None
+    if not os.path.exists(safe_path):
+        return safe_path, original_path
+    root, ext = os.path.splitext(original_path)
+    alt_rel = f"{root}-restored-{file_id}{ext}"
+    safe_alt = safe_join(base_dir, alt_rel)
+    return safe_alt, alt_rel
 
 
 @text_bp.route('/')
@@ -126,7 +147,15 @@ def delete_file():
     base_dir = current_app.config['UPLOAD_FOLDER']
     safe_path = safe_join(base_dir, rel_path)
     if safe_path and os.path.isfile(safe_path):
-        os.remove(safe_path)
+        size_bytes = os.path.getsize(safe_path)
+        trash_dir = ensure_trash_dir(base_dir)
+        unique_name = f"{uuid.uuid4().hex}_{os.path.basename(rel_path)}"
+        trash_rel = os.path.join('.trash', unique_name).replace(os.sep, '/')
+        trash_path = safe_join(base_dir, trash_rel)
+        if trash_path is not None:
+            os.makedirs(os.path.dirname(trash_path), exist_ok=True)
+            shutil.move(safe_path, trash_path)
+            trash_service.add_file(rel_path, trash_rel, size_bytes)
         text_service.add_log('file_delete', content=rel_path, client_ip=get_client_ip())
 
         parent = os.path.dirname(safe_path)
@@ -161,3 +190,67 @@ def get_texts():
         })
 
     return jsonify(texts_list)
+
+
+@text_bp.route('/api/trash')
+def get_trash():
+    deleted_texts = text_service.get_deleted_texts()
+    texts_list = []
+    for text in deleted_texts:
+        texts_list.append({
+            'id': text[0],
+            'content': text[1],
+            'created_at': text[2]
+        })
+
+    files = trash_service.list_files()
+    file_list = []
+    for f in files:
+        file_list.append({
+            'id': f['id'],
+            'original_path': f['original_path'],
+            'size': format_size(f['size']),
+            'deleted_at': f['deleted_at']
+        })
+
+    return jsonify({'texts': texts_list, 'files': file_list})
+
+
+@text_bp.route('/trash/restore/text/<int:text_id>', methods=['POST'])
+def restore_text(text_id):
+    restored = text_service.restore_text(text_id)
+    if restored:
+        text_service.add_log('text_restore', text_id=text_id, client_ip=get_client_ip())
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return ('', 204)
+    return redirect(url_for('text.index'))
+
+
+@text_bp.route('/trash/restore/file', methods=['POST'])
+def restore_file():
+    file_id = request.form.get('id', type=int)
+    if not file_id:
+        return redirect(url_for('text.index', _anchor='file-section'))
+
+    file_row = trash_service.get_file(file_id)
+    if not file_row:
+        return redirect(url_for('text.index', _anchor='file-section'))
+
+    base_dir = current_app.config['UPLOAD_FOLDER']
+    trash_path = safe_join(base_dir, file_row['trash_path'])
+    if trash_path is None or not os.path.isfile(trash_path):
+        trash_service.remove_file(file_id)
+        return redirect(url_for('text.index', _anchor='file-section'))
+
+    restore_path, restore_rel = build_restore_path(base_dir, file_row['original_path'], file_id)
+    if restore_path is None:
+        return redirect(url_for('text.index', _anchor='file-section'))
+
+    os.makedirs(os.path.dirname(restore_path), exist_ok=True)
+    shutil.move(trash_path, restore_path)
+    trash_service.remove_file(file_id)
+    text_service.add_log('file_restore', content=restore_rel, client_ip=get_client_ip())
+
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return ('', 204)
+    return redirect(url_for('text.index', _anchor='file-section'))

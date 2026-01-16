@@ -24,6 +24,20 @@ class TextService:
 
         return result
 
+    def get_deleted_texts(self):
+        """Get deleted texts."""
+        conn = self.get_connection()
+        c = conn.cursor(dictionary=True)
+        c.execute('SELECT * FROM texts WHERE is_active = 0 ORDER BY id DESC')
+        texts = c.fetchall()
+        conn.close()
+
+        result = []
+        for text in texts:
+            result.append((text['id'], text['content'], text['created_at']))
+
+        return result
+
     def add_text(self, content):
         """Add new text."""
         conn = self.get_connection()
@@ -41,6 +55,19 @@ class TextService:
         c = conn.cursor()
         c.execute(
             'UPDATE texts SET is_active = 0 WHERE id = %s AND is_active = 1',
+            (text_id,)
+        )
+        conn.commit()
+        affected_rows = c.rowcount
+        conn.close()
+        return affected_rows > 0
+
+    def restore_text(self, text_id):
+        """Restore a deleted text."""
+        conn = self.get_connection()
+        c = conn.cursor()
+        c.execute(
+            'UPDATE texts SET is_active = 1 WHERE id = %s AND is_active = 0',
             (text_id,)
         )
         conn.commit()
