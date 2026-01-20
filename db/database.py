@@ -4,7 +4,7 @@ from mysql.connector import pooling
 
 class DatabaseManager:
     def __init__(self):
-        self.host = "192.168.100.242"
+        self.host = "mysql"
         self.user = "root"
         self.password = "Lhf134652"
         self.database = "shuijingTools"
