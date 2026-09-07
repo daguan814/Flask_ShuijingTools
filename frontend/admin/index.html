@@ -1,0 +1,18 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>水镜云盘管理</title><link rel="stylesheet" href="/admin/admin.css?v=20260907-1"></head>
+<body>
+<main class="admin-shell">
+  <section id="adminLogin" class="login-card"><h1>水镜云盘管理</h1><form id="adminLoginForm"><input id="adminUsername" placeholder="管理员账号" required><input id="adminPassword" type="password" placeholder="管理员密码" required><button>登录</button></form><p id="adminLoginError" class="error"></p><a href="/">返回云盘</a></section>
+  <section id="adminApp" class="hidden">
+    <header><div><h1>管理后台</h1><p>用户、用户组、注册申请与存储文件</p></div><div><a href="/">返回云盘</a><button id="adminLogout">退出</button></div></header>
+    <nav><button data-panel="users" class="active">用户管理</button><button data-panel="groups">用户组</button><button data-panel="requests">注册申请</button><button data-panel="files">用户文件</button></nav>
+    <p id="notice" class="notice"></p>
+    <section id="usersPanel" class="panel">
+      <div class="panel-title"><h2>用户管理</h2><button id="addUser">新增用户</button></div>
+      <div class="warning">⚠ 删除用户风险很高，请不要随意删除。系统只删除账号登录权限，用户文件会保留在服务器。</div>
+      <div class="table-wrap"><table><thead><tr><th>用户名</th><th>用户组</th><th>状态</th><th>已用 / 额度</th><th>操作</th></tr></thead><tbody id="usersBody"></tbody></table></div>
+    </section>
+    <section id="groupsPanel" class="panel hidden"><div class="panel-title"><h2>用户组</h2><button id="addGroup">新增用户组</button></div><div class="table-wrap"><table><thead><tr><th>名称</th><th>创建时间</th><th>操作</th></tr></thead><tbody id="groupsBody"></tbody></table></div></section>
+    <section id="requestsPanel" class="panel hidden"><div class="panel-title"><h2>注册申请</h2><button id="refreshAdmin">刷新</button></div><div class="table-wrap"><table><thead><tr><th>用户名</th><th>用户组</th><th>申请时间</th><th>操作</th></tr></thead><tbody id="requestsBody"></tbody></table></div></section>
+    <section id="filesPanel" class="panel hidden"><div class="panel-title"><h2>用户文件</h2><select id="fileUserSelect"></select></div><div id="adminBreadcrumb" class="breadcrumb"></div><div class="table-wrap"><table><thead><tr><th>名称</th><th>类型</th><th>内容</th><th>大小</th><th>修改日期</th></tr></thead><tbody id="adminFilesBody"></tbody></table></div></section>
+  </section>
+</main><script src="/admin/admin.js?v=20260907-1"></script></body></html>

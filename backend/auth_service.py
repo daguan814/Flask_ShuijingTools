@@ -1,6 +1,8 @@
 import uuid
 from datetime import datetime, timedelta
 
+from werkzeug.security import check_password_hash
+
 from .database import db_manager
 
 
@@ -15,10 +17,19 @@ class AuthService:
         return {
             "id": user["id"],
             "username": user["username"],
+            "group_id": user["group_id"],
+            "quota_bytes": user["quota_bytes"],
         }
 
-    def login(self, username: str):
-        return db_manager.find_user_by_username(username.strip())
+    def login(self, group_id: int, username: str, password: str):
+        user = db_manager.find_user_by_username(username.strip())
+        if not user or user["status"] != "active":
+            return None
+        if int(user["group_id"] or 0) != int(group_id or 0):
+            return None
+        if not user["password_hash"] or not check_password_hash(user["password_hash"], password or ""):
+            return None
+        return user
 
     def create_session(self, user_id: int) -> str:
         token = uuid.uuid4().hex + uuid.uuid4().hex
@@ -48,10 +59,10 @@ class AuthService:
         now = db_manager.now_expr()
         cursor.execute(
             f"""
-            SELECT u.id, u.username, u.storage_key
+            SELECT u.id, u.username, u.storage_key, u.group_id, u.status, u.quota_bytes
             FROM user_sessions s
             JOIN storage_users u ON u.id = s.user_id
-            WHERE s.token = {ph} AND s.expires_at > {now}
+            WHERE s.token = {ph} AND s.expires_at > {now} AND u.status = 'active'
             LIMIT 1
             """,
             (token,),

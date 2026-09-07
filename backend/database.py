@@ -14,6 +14,7 @@ from .config import (
     DB_USER,
     DEFAULT_USERS,
     SQLITE_DB_PATH,
+    DEFAULT_QUOTA_BYTES,
 )
 
 
@@ -227,6 +228,8 @@ class DatabaseManager:
                 """
             )
 
+        self._migrate_accounts(cursor)
+
         now = datetime.now().isoformat(sep=" ", timespec="seconds")
         insert_sql = (
             """
@@ -244,6 +247,12 @@ class DatabaseManager:
         for username in DEFAULT_USERS:
             storage_key = username
             cursor.execute(insert_sql, (username, storage_key, now, now))
+        cursor.execute(
+            "UPDATE storage_users SET group_id = "
+            "(SELECT id FROM user_groups WHERE name = " + self.placeholder() + " LIMIT 1) "
+            "WHERE group_id IS NULL",
+            ("默认组",),
+        )
 
         conn.commit()
         cursor.close()
@@ -257,6 +266,66 @@ class DatabaseManager:
             if user:
                 file_service.ensure_user_root(user)
 
+    def _column_names(self, cursor, table):
+        if self.is_sqlite:
+            cursor.execute(f"PRAGMA table_info({table})")
+            return {row[1] for row in cursor.fetchall()}
+        cursor.execute(f"SHOW COLUMNS FROM `{table}`")
+        return {row[0] for row in cursor.fetchall()}
+
+    def _migrate_accounts(self, cursor):
+        if self.is_sqlite:
+            cursor.execute("""CREATE TABLE IF NOT EXISTS user_groups (
+                id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)""")
+            cursor.execute("""CREATE TABLE IF NOT EXISTS registration_requests (
+                id INTEGER PRIMARY KEY AUTOINCREMENT, group_id INTEGER NOT NULL,
+                username TEXT NOT NULL, password_hash TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'pending', created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                reviewed_at TEXT NULL)""")
+            cursor.execute("""CREATE TABLE IF NOT EXISTS admin_sessions (
+                token TEXT PRIMARY KEY, expires_at TEXT NOT NULL,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)""")
+            definitions = {
+                "group_id": "INTEGER NULL", "password_hash": "TEXT NULL",
+                "status": "TEXT NOT NULL DEFAULT 'active'",
+                "quota_bytes": f"INTEGER NOT NULL DEFAULT {DEFAULT_QUOTA_BYTES}",
+                "deleted_at": "TEXT NULL",
+            }
+        else:
+            cursor.execute("""CREATE TABLE IF NOT EXISTS user_groups (
+                id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(64) NOT NULL UNIQUE,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci""")
+            cursor.execute("""CREATE TABLE IF NOT EXISTS registration_requests (
+                id BIGINT AUTO_INCREMENT PRIMARY KEY, group_id INT NOT NULL,
+                username VARCHAR(64) NOT NULL, password_hash VARCHAR(255) NOT NULL,
+                status VARCHAR(16) NOT NULL DEFAULT 'pending', created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                reviewed_at DATETIME NULL, INDEX idx_registration_status(status)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci""")
+            cursor.execute("""CREATE TABLE IF NOT EXISTS admin_sessions (
+                token VARCHAR(128) PRIMARY KEY, expires_at DATETIME NOT NULL,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci""")
+            definitions = {
+                "group_id": "INT NULL", "password_hash": "VARCHAR(255) NULL",
+                "status": "VARCHAR(16) NOT NULL DEFAULT 'active'",
+                "quota_bytes": f"BIGINT NOT NULL DEFAULT {DEFAULT_QUOTA_BYTES}",
+                "deleted_at": "DATETIME NULL",
+            }
+        columns = self._column_names(cursor, "storage_users")
+        for name, definition in definitions.items():
+            if name not in columns:
+                cursor.execute(f"ALTER TABLE storage_users ADD COLUMN {name} {definition}")
+        insert = "INSERT OR IGNORE INTO user_groups(name) VALUES (?)" if self.is_sqlite else "INSERT IGNORE INTO user_groups(name) VALUES (%s)"
+        cursor.execute(insert, ("默认组",))
+        cursor.execute("SELECT id FROM user_groups WHERE name = " + self.placeholder(), ("默认组",))
+        group_id = cursor.fetchone()[0]
+        cursor.execute(
+            f"UPDATE storage_users SET group_id = {self.placeholder()} WHERE group_id IS NULL",
+            (group_id,),
+        )
+
     def find_user_by_username(self, username: str):
         if not username:
             return None
@@ -264,7 +333,7 @@ class DatabaseManager:
         conn = self.get_connection()
         cursor = self.cursor(conn, dictionary=True)
         cursor.execute(
-            f"SELECT id, username, storage_key FROM storage_users "
+            f"SELECT id, username, storage_key, group_id, password_hash, status, quota_bytes FROM storage_users "
             f"WHERE username = {ph} LIMIT 1",
             (username,),
         )
@@ -278,7 +347,7 @@ class DatabaseManager:
         conn = self.get_connection()
         cursor = self.cursor(conn, dictionary=True)
         cursor.execute(
-            f"SELECT id, username, storage_key FROM storage_users "
+            f"SELECT id, username, storage_key, group_id, password_hash, status, quota_bytes FROM storage_users "
             f"WHERE id = {ph} LIMIT 1",
             (user_id,),
         )

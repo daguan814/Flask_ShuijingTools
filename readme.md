@@ -10,6 +10,11 @@
 - 文件与文件夹分用户隔离存储；
 - 浏览目录、查看修改时间和普通文件大小；
 - 文件夹显示直接下一层的文件夹数、文件数以及全部内容总大小；
+- 文件列表支持按名称、内容数量、修改日期和大小升降序排序；
+- 用户按用户组、用户名和密码登录，新用户通过注册申请等待管理员审批；
+- `/admin` 管理后台支持用户组、用户、注册申请、额度和跨用户文件浏览；
+- 新用户默认网盘额度为 5GB，管理员可单独调整；
+- 删除用户采用安全软删除，撤销登录权限但保留服务器文件；
 - 上传单个文件、多个文件或完整文件夹；
 - 支持拖放上传并保留目录结构；
 - 新建文件夹、单项重命名、批量移动和批量删除；
@@ -25,7 +30,7 @@
 
 当前预置用户：`shuijing`、`txt`。
 
-> 当前登录方式仅校验用户名，不要求密码。不要将未知用户名加入数据库。
+> 用户必须选择用户组并使用密码登录。管理员密码只配置在生产服务器 `.env` 中。
 
 ## 目录结构
 
@@ -126,6 +131,9 @@ python3 -m http.server 5173 -d frontend
 | `STORAGE_ROOT` | `backend/storage` | 用户文件根目录 |
 | `RECYCLE_ROOT` | `recycle_bin` | 回收站文件根目录 |
 | `RECYCLE_BIN_PASSWORD` | 空 | 恢复回收站内容所需的管理密码 |
+| `ADMIN_USERNAME` | `shuijing` | 管理后台账号 |
+| `ADMIN_PASSWORD` | 空 | 管理后台密码，只应保存在服务器 `.env` |
+| `DEFAULT_QUOTA_BYTES` | `5368709120` | 新用户默认额度（5GB） |
 | `MAX_CONTENT_LENGTH` | `10737418240` | 单次请求最大10GB |
 | `SECRET_KEY` | 无安全默认值 | 生产签名密钥，必须配置 |
 | `ALLOWED_ORIGINS` | `http://127.0.0.1:5173` | 逗号分隔的 CORS 来源 |
@@ -135,7 +143,9 @@ python3 -m http.server 5173 -d frontend
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
 | `GET` | `/api/health` | 健康检查 |
-| `POST` | `/api/auth/login` | 使用用户名登录 |
+| `GET` | `/api/auth/groups` | 获取可选用户组 |
+| `POST` | `/api/auth/login` | 使用用户组、用户名和密码登录 |
+| `POST` | `/api/auth/register` | 提交注册申请 |
 | `GET` | `/api/auth/me` | 当前用户和容量信息 |
 | `POST` | `/api/auth/logout` | 注销当前会话 |
 | `GET` | `/api/files?path=` | 列出目录 |
@@ -154,6 +164,8 @@ python3 -m http.server 5173 -d frontend
 | `GET` | `/api/logs` | 查询当前用户的文件操作日志，可使用 `date`、`action`、`page`、`page_size` 筛选和分页 |
 | `GET` | `/api/recycle` | 查询当前用户的回收站 |
 | `POST` | `/api/recycle/<id>/restore` | 使用回收站密码恢复项目 |
+
+管理员页面位于 `/admin/`，对应 `/api/admin/*` 接口，支持用户、用户组、注册审批、额度以及用户文件浏览。
 
 除健康检查、登录和签名下载链接外，API 需要：
 

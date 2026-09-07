@@ -13,6 +13,7 @@ from .routes.auth import auth_bp
 from .routes.files import files_bp
 from .routes.logs import logs_bp
 from .routes.recycle import recycle_bp
+from .routes.admin import admin_bp
 
 
 def _token_from_request():
@@ -50,6 +51,7 @@ def create_app():
     app.register_blueprint(files_bp)
     app.register_blueprint(logs_bp)
     app.register_blueprint(recycle_bp)
+    app.register_blueprint(admin_bp)
 
     try:
         db_manager.init_db()
@@ -65,7 +67,7 @@ def create_app():
         if not request.path.startswith("/api"):
             return None
 
-        if request.path in ("/api/health", "/api/auth/login") or request.path.startswith(
+        if request.path in ("/api/health", "/api/auth/login", "/api/auth/groups", "/api/auth/register") or request.path.startswith("/api/admin/") or request.path.startswith(
             "/api/files/download/ticket/"
         ):
             return None

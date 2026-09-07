@@ -4,16 +4,17 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>水镜云盘</title>
-  <link rel="stylesheet" href="/styles.css?v=20260904-4">
+  <link rel="stylesheet" href="/styles.css?v=20260907-1">
 </head>
 <body>
   <div id="loginView" class="auth-screen">
     <div class="auth-card">
       <div class="auth-logo">水镜云盘</div>
-      <h1>输入用户名进入存储空间</h1>
-      <p class="auth-subtitle">请输入已注册的用户名</p>
+      <h1>登录存储空间</h1>
+      <p class="auth-subtitle">请选择用户组并输入账号密码</p>
 
       <form id="loginForm" class="login-form">
+        <select id="loginGroup" required><option value="">请选择用户组</option></select>
         <input
           id="usernameInput"
           type="text"
@@ -22,7 +23,18 @@
           maxlength="64"
           required
         >
+        <input id="passwordInput" type="password" autocomplete="current-password" placeholder="请输入密码" required>
         <button type="submit" class="primary-btn">进入云盘</button>
+      </form>
+
+      <button id="showRegisterBtn" type="button" class="auth-link-btn">申请注册</button>
+      <form id="registerForm" class="login-form hidden">
+        <select id="registerGroup" required><option value="">请选择用户组</option></select>
+        <input id="registerUsername" type="text" placeholder="申请用户名" maxlength="64" required>
+        <input id="registerPassword" type="password" placeholder="密码（至少6位）" required>
+        <input id="registerConfirmPassword" type="password" placeholder="再次输入密码" required>
+        <button type="submit" class="primary-btn">提交注册申请</button>
+        <button id="cancelRegisterBtn" type="button" class="auth-link-btn">返回登录</button>
       </form>
 
       <div id="loginError" class="login-error" role="alert"></div>
@@ -97,10 +109,10 @@
               <thead>
                 <tr>
                   <th class="select-col"><input id="selectAllCheckbox" type="checkbox" aria-label="全选"></th>
-                  <th>名称</th>
-                  <th class="content-col">内容</th>
-                  <th class="date-col">修改日期</th>
-                  <th class="size-col">大小</th>
+                  <th><button class="sort-btn" data-sort="name">名称 <span></span></button></th>
+                  <th class="content-col"><button class="sort-btn" data-sort="content">内容 <span></span></button></th>
+                  <th class="date-col"><button class="sort-btn" data-sort="modified">修改日期 <span></span></button></th>
+                  <th class="size-col"><button class="sort-btn" data-sort="size">大小 <span></span></button></th>
                 </tr>
               </thead>
               <tbody id="fileTableBody"></tbody>
@@ -219,6 +231,6 @@
 
   <div id="toast" class="toast" role="status"></div>
 
-  <script src="/app.js?v=20260904-4"></script>
+  <script src="/app.js?v=20260907-1"></script>
 </body>
 </html>

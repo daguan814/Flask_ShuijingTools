@@ -19,6 +19,7 @@ let logPageSize = 20;
 let logTotal = 0;
 let logTotalPages = 1;
 let activeView = "files";
+let fileSort = { field: "name", direction: "asc" };
 
 const PREVIEW_EXTENSIONS = new Set([
   "html",
@@ -120,6 +121,7 @@ document.addEventListener("DOMContentLoaded", () => {
   bindLogin();
   bindStorage();
   bindGlobalDropProtection();
+  loadPublicGroups();
 
   if (token) {
     loadCurrentUser();
@@ -137,14 +139,16 @@ function bindLogin() {
     event.preventDefault();
     error.textContent = "";
     const username = input.value.trim();
-    if (!username) return;
+    const password = document.getElementById("passwordInput").value;
+    const groupId = Number(document.getElementById("loginGroup").value);
+    if (!username || !password || !groupId) return;
 
     const button = form.querySelector("button[type='submit']");
     button.disabled = true;
     try {
       const response = await api("/auth/login", {
         method: "POST",
-        json: { username },
+        json: { username, password, group_id: groupId },
       });
       if (response.status === 404) {
         const data = await safeJson(response);
@@ -173,6 +177,45 @@ function bindLogin() {
     }
   });
 
+  document.getElementById("showRegisterBtn")?.addEventListener("click", () => {
+    form.classList.add("hidden");
+    document.getElementById("showRegisterBtn").classList.add("hidden");
+    document.getElementById("registerForm").classList.remove("hidden");
+  });
+  document.getElementById("cancelRegisterBtn")?.addEventListener("click", () => {
+    document.getElementById("registerForm").classList.add("hidden");
+    form.classList.remove("hidden");
+    document.getElementById("showRegisterBtn").classList.remove("hidden");
+  });
+  document.getElementById("registerForm")?.addEventListener("submit", submitRegistration);
+
+}
+
+async function loadPublicGroups() {
+  try {
+    const response = await api("/auth/groups");
+    const data = await response.json();
+    const options = (data.groups || []).map(group => `<option value="${group.id}">${escapeHtml(group.name)}</option>`).join("");
+    ["loginGroup", "registerGroup"].forEach(id => {
+      const select = document.getElementById(id);
+      if (select) select.innerHTML = `<option value="">请选择用户组</option>${options}`;
+    });
+  } catch (_err) {}
+}
+
+async function submitRegistration(event) {
+  event.preventDefault();
+  const error = document.getElementById("loginError");
+  const payload = {
+    group_id: Number(document.getElementById("registerGroup").value),
+    username: document.getElementById("registerUsername").value.trim(),
+    password: document.getElementById("registerPassword").value,
+    confirm_password: document.getElementById("registerConfirmPassword").value,
+  };
+  const response = await api("/auth/register", { method: "POST", json: payload });
+  const data = await safeJson(response);
+  error.textContent = data?.detail || (response.ok ? "申请已提交" : "提交失败");
+  if (response.ok) document.getElementById("registerForm").reset();
 }
 
 function bindStorage() {
@@ -270,6 +313,13 @@ function bindStorage() {
   const tableBody = document.getElementById("fileTableBody");
   tableBody?.addEventListener("click", handleTableClick);
   tableBody?.addEventListener("change", handleSelectionChange);
+  document.querySelector(".file-table thead")?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-sort]");
+    if (!button) return;
+    const field = button.dataset.sort;
+    fileSort = { field, direction: fileSort.field === field && fileSort.direction === "asc" ? "desc" : "asc" };
+    renderTable();
+  });
 
   const dropZone = document.getElementById("dropZone");
   dropZone?.addEventListener("dragover", (event) => {
@@ -447,7 +497,13 @@ function renderTable() {
   }
   empty.classList.add("hidden");
 
-  body.innerHTML = entries
+  const sortedEntries = [...entries].sort(compareFileEntries);
+  document.querySelectorAll("[data-sort]").forEach(button => {
+    button.classList.toggle("active", button.dataset.sort === fileSort.field);
+    const marker = button.querySelector("span");
+    if (marker) marker.textContent = button.dataset.sort === fileSort.field ? (fileSort.direction === "asc" ? "↑" : "↓") : "";
+  });
+  body.innerHTML = sortedEntries
     .map((entry) => {
       const isFolder = entry.type === "folder";
       const icon = isFolder ? folderIcon(entry.name) : fileIcon(entry.name);
@@ -476,6 +532,16 @@ function renderTable() {
     })
     .join("");
   updateSelectionUi();
+}
+
+function compareFileEntries(a, b) {
+  let left; let right;
+  if (fileSort.field === "size") { left = Number(a.size || 0); right = Number(b.size || 0); }
+  else if (fileSort.field === "modified") { left = new Date(a.modified_at).getTime(); right = new Date(b.modified_at).getTime(); }
+  else if (fileSort.field === "content") { left = Number(a.child_folder_count || 0) + Number(a.child_file_count || 0); right = Number(b.child_folder_count || 0) + Number(b.child_file_count || 0); }
+  else { left = a.name; right = b.name; }
+  const result = typeof left === "number" ? left - right : String(left).localeCompare(String(right), "zh-CN", { numeric: true });
+  return fileSort.direction === "asc" ? result : -result;
 }
 
 function handleSelectionChange(event) {
