@@ -95,7 +95,7 @@ class SchoolService:
         cursor.execute(f"SELECT * FROM school_classes WHERE id={ph}",(class_id,)); row=cursor.fetchone()
         if not row: cursor.close(); conn.close(); raise ValueError("班级不存在")
         cursor.execute(f"SELECT COUNT(*) AS total FROM storage_users WHERE class_id={ph} AND status!='deleted'",(class_id,))
-        if cursor.fetchone()["total"]: cursor.close(); conn.close(); raise ValueError("班级内仍有学生，不能删除")
+        if cursor.fetchone()["total"]: cursor.close(); conn.close(); raise ValueError("用户组内仍有用户，不能删除")
         path=STORAGE_ROOT/row["storage_key"]
         if path.exists() and any(path.iterdir()): cursor.close(); conn.close(); raise ValueError("班级目录不为空，不能删除")
         if path.exists(): path.rmdir()
