@@ -2,6 +2,7 @@ import uuid
 from datetime import datetime, timedelta
 
 from .database import db_manager
+from werkzeug.security import check_password_hash
 
 
 class AuthService:
@@ -15,10 +16,19 @@ class AuthService:
         return {
             "id": user["id"],
             "username": user["username"],
+            "class_id": user["class_id"],
+            "class_name": user["class_name"],
         }
 
-    def login(self, username: str):
-        return db_manager.find_user_by_username(username.strip())
+    def login(self, class_id: int, username: str, password: str):
+        user = db_manager.find_user_by_username(username.strip())
+        if not user or user["status"] != "active":
+            return None
+        if int(user["class_id"]) != int(class_id or 0):
+            return None
+        if not user["password_hash"] or not check_password_hash(user["password_hash"], password or ""):
+            return None
+        return user
 
     def create_session(self, user_id: int) -> str:
         token = uuid.uuid4().hex + uuid.uuid4().hex
@@ -48,10 +58,12 @@ class AuthService:
         now = db_manager.now_expr()
         cursor.execute(
             f"""
-            SELECT u.id, u.username, u.storage_key
+            SELECT u.id,u.username,u.storage_key,u.class_id,u.password_hash,u.status,
+                   c.name AS class_name,c.storage_key AS class_storage_key
             FROM user_sessions s
             JOIN storage_users u ON u.id = s.user_id
-            WHERE s.token = {ph} AND s.expires_at > {now}
+            JOIN school_classes c ON c.id = u.class_id
+            WHERE s.token = {ph} AND s.expires_at > {now} AND u.status = 'active'
             LIMIT 1
             """,
             (token,),

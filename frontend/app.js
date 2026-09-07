@@ -120,6 +120,7 @@ document.addEventListener("DOMContentLoaded", () => {
   bindLogin();
   bindStorage();
   bindGlobalDropProtection();
+  loadClasses();
 
   if (token) {
     loadCurrentUser();
@@ -137,14 +138,16 @@ function bindLogin() {
     event.preventDefault();
     error.textContent = "";
     const username = input.value.trim();
-    if (!username) return;
+    const password = document.getElementById("passwordInput").value;
+    const classId = Number(document.getElementById("classInput").value);
+    if (!username || !password || !classId) return;
 
     const button = form.querySelector("button[type='submit']");
     button.disabled = true;
     try {
       const response = await api("/auth/login", {
         method: "POST",
-        json: { username },
+        json: { username, password, class_id: classId },
       });
       if (response.status === 404) {
         const data = await safeJson(response);
@@ -173,6 +176,28 @@ function bindLogin() {
     }
   });
 
+  document.getElementById("showRegisterBtn")?.addEventListener("click", () => {
+    form.classList.add("hidden"); document.getElementById("showRegisterBtn").classList.add("hidden"); document.getElementById("registerForm").classList.remove("hidden");
+  });
+  document.getElementById("cancelRegisterBtn")?.addEventListener("click", () => {
+    document.getElementById("registerForm").classList.add("hidden"); form.classList.remove("hidden"); document.getElementById("showRegisterBtn").classList.remove("hidden");
+  });
+  document.getElementById("registerForm")?.addEventListener("submit", submitRegistration);
+
+}
+
+async function loadClasses() {
+  try {
+    const response=await api("/auth/classes"); const data=await response.json();
+    const options=(data.classes||[]).map(item=>`<option value="${item.id}">${escapeHtml(item.name)}</option>`).join("");
+    ["classInput","registerClass"].forEach(id=>{const select=document.getElementById(id);if(select)select.innerHTML=`<option value="">请选择班级</option>${options}`;});
+  } catch (_err) {}
+}
+
+async function submitRegistration(event) {
+  event.preventDefault(); const error=document.getElementById("loginError");
+  const response=await api("/auth/register",{method:"POST",json:{class_id:Number(document.getElementById("registerClass").value),username:document.getElementById("registerName").value.trim(),password:document.getElementById("registerPassword").value,confirm_password:document.getElementById("registerConfirm").value}});
+  const data=await safeJson(response); error.textContent=data?.detail||(response.ok?"申请已提交":"提交失败"); if(response.ok)document.getElementById("registerForm").reset();
 }
 
 function bindStorage() {
@@ -185,10 +210,11 @@ function bindStorage() {
     switchView("logs");
     loadLogs();
   });
-  document.getElementById("recycleBtn")?.addEventListener("click", () => {
-    switchView("recycle");
-    loadRecycleItems();
+  document.getElementById("announcementsBtn")?.addEventListener("click", () => {
+    switchView("announcements"); loadAnnouncements();
   });
+  document.getElementById("reportsBtn")?.addEventListener("click",()=>switchView("reports"));
+  document.getElementById("reportForm")?.addEventListener("submit",submitReport);
   document.getElementById("uploadFileBtn")?.addEventListener("click", () =>
     document.getElementById("fileInput").click()
   );
@@ -216,8 +242,6 @@ function bindStorage() {
     ?.addEventListener("click", batchDeleteSelected);
 
   document.getElementById("refreshLogsBtn")?.addEventListener("click", loadLogs);
-  document.getElementById("refreshRecycleBtn")?.addEventListener("click", loadRecycleItems);
-  document.getElementById("recycleTableBody")?.addEventListener("click", handleRecycleClick);
   document.getElementById("logTypeFilter")?.addEventListener("change", (event) => {
     activeLogFilter = event.target.value || "all";
     logPage = 1;
@@ -387,12 +411,13 @@ function renderUserInfo() {
   if (!el) return;
 
   const username = currentUser?.username || "";
+  const className = currentUser?.class_name ? `${currentUser.class_name}班` : "";
   const storage = currentUser?.storage;
   let usage = "";
   if (storage) {
     usage = `已用 ${storage.used_display} / 磁盘 ${storage.disk_total_display}`;
   }
-  el.textContent = [username, usage].filter(Boolean).join(" · ");
+  el.textContent = [className, username, usage].filter(Boolean).join(" · ");
 }
 
 async function loadCurrentDirectory() {
@@ -566,17 +591,28 @@ async function navigateTo(path) {
   await loadCurrentDirectory();
   document.getElementById("rootBtn")?.classList.add("active");
   document.getElementById("logsBtn")?.classList.remove("active");
-  document.getElementById("recycleBtn")?.classList.remove("active");
+  document.getElementById("announcementsBtn")?.classList.remove("active");
+  document.getElementById("reportsBtn")?.classList.remove("active");
 }
 
 function switchView(view) {
   activeView = view;
   document.getElementById("filesView")?.classList.toggle("hidden", view !== "files");
   document.getElementById("logsView")?.classList.toggle("hidden", view !== "logs");
-  document.getElementById("recycleView")?.classList.toggle("hidden", view !== "recycle");
+  document.getElementById("announcementsView")?.classList.toggle("hidden", view !== "announcements");
+  document.getElementById("reportsView")?.classList.toggle("hidden", view !== "reports");
   document.getElementById("rootBtn")?.classList.toggle("active", view === "files");
   document.getElementById("logsBtn")?.classList.toggle("active", view === "logs");
-  document.getElementById("recycleBtn")?.classList.toggle("active", view === "recycle");
+  document.getElementById("announcementsBtn")?.classList.toggle("active", view === "announcements");
+  document.getElementById("reportsBtn")?.classList.toggle("active", view === "reports");
+}
+
+async function loadAnnouncements(){
+  const response=await api("/auth/announcements");if(!response.ok)return;const data=await response.json();const list=document.getElementById("announcementsList");list.innerHTML=(data.items||[]).map(item=>`<article class="message-card"><h3>${escapeHtml(item.title)}</h3><p>${escapeHtml(item.content)}</p><time>${escapeHtml(formatDate(item.created_at))}</time></article>`).join("")||`<div class="empty-message">暂时没有班级公告。</div>`;
+}
+
+async function submitReport(event){
+  event.preventDefault();const input=document.getElementById("reportContent");const response=await api("/auth/reports",{method:"POST",json:{content:input.value}});if(response.ok){input.value="";showToast("汇报已提交给管理员。");}else{const data=await safeJson(response);showToast(data?.detail||"提交失败。");}
 }
 
 async function loadRecycleItems() {

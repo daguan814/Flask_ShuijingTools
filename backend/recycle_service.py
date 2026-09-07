@@ -9,7 +9,11 @@ from .file_service import file_service, format_size
 
 class RecycleService:
     def user_recycle_root(self, user):
-        root = RECYCLE_ROOT / file_service.normalize_username(user["username"])
+        root = (
+            RECYCLE_ROOT
+            / file_service.normalize_storage_name(user["class_storage_key"])
+            / file_service.normalize_storage_name(user["storage_key"])
+        )
         root.mkdir(parents=True, exist_ok=True)
         return root.resolve()
 
@@ -95,10 +99,10 @@ class RecycleService:
             )
         return items
 
-    def restore(self, user, item_id, password):
-        if not RECYCLE_BIN_PASSWORD:
+    def restore(self, user, item_id, password="", require_password=True):
+        if require_password and not RECYCLE_BIN_PASSWORD:
             raise RuntimeError("recycle password is not configured")
-        if not hmac.compare_digest(str(password), RECYCLE_BIN_PASSWORD):
+        if require_password and not hmac.compare_digest(str(password), RECYCLE_BIN_PASSWORD):
             raise PermissionError("invalid recycle password")
 
         ph = db_manager.placeholder()

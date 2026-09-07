@@ -227,6 +227,8 @@ class DatabaseManager:
                 """
             )
 
+        self._init_school_schema(cursor)
+
         now = datetime.now().isoformat(sep=" ", timespec="seconds")
         insert_sql = (
             """
@@ -245,6 +247,14 @@ class DatabaseManager:
             storage_key = username
             cursor.execute(insert_sql, (username, storage_key, now, now))
 
+        ph = self.placeholder()
+        cursor.execute(f"SELECT id FROM school_classes WHERE name={ph}", ("111",))
+        class_id = cursor.fetchone()[0]
+        cursor.execute(
+            f"UPDATE storage_users SET class_id={ph}, status='password_required' WHERE class_id IS NULL",
+            (class_id,),
+        )
+
         conn.commit()
         cursor.close()
         conn.close()
@@ -257,6 +267,61 @@ class DatabaseManager:
             if user:
                 file_service.ensure_user_root(user)
 
+    def _columns(self, cursor, table):
+        if self.is_sqlite:
+            cursor.execute(f"PRAGMA table_info({table})")
+            return {row[1] for row in cursor.fetchall()}
+        cursor.execute(f"SHOW COLUMNS FROM `{table}`")
+        return {row[0] for row in cursor.fetchall()}
+
+    def _init_school_schema(self, cursor):
+        if self.is_sqlite:
+            cursor.execute("""CREATE TABLE IF NOT EXISTS school_classes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE,
+                storage_key TEXT NOT NULL UNIQUE, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)""")
+            cursor.execute("""CREATE TABLE IF NOT EXISTS registration_requests (
+                id INTEGER PRIMARY KEY AUTOINCREMENT, class_id INTEGER NOT NULL,
+                username TEXT NOT NULL, password_hash TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'pending', created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                reviewed_at TEXT NULL)""")
+            cursor.execute("""CREATE TABLE IF NOT EXISTS announcements (
+                id INTEGER PRIMARY KEY AUTOINCREMENT, class_id INTEGER NOT NULL,
+                title TEXT NOT NULL, content TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)""")
+            cursor.execute("""CREATE TABLE IF NOT EXISTS student_reports (
+                id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL,
+                content TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'unread',
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)""")
+            definitions={"class_id":"INTEGER NULL","password_hash":"TEXT NULL","status":"TEXT NOT NULL DEFAULT 'active'","deleted_at":"TEXT NULL"}
+            insert="INSERT OR IGNORE INTO school_classes(name,storage_key) VALUES (?,?)"
+        else:
+            cursor.execute("""CREATE TABLE IF NOT EXISTS school_classes (
+                id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(64) NOT NULL UNIQUE,
+                storage_key VARCHAR(64) NOT NULL UNIQUE, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci""")
+            cursor.execute("""CREATE TABLE IF NOT EXISTS registration_requests (
+                id BIGINT AUTO_INCREMENT PRIMARY KEY, class_id INT NOT NULL,
+                username VARCHAR(64) NOT NULL, password_hash VARCHAR(255) NOT NULL,
+                status VARCHAR(16) NOT NULL DEFAULT 'pending', created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                reviewed_at DATETIME NULL, INDEX idx_registration_status(status)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci""")
+            cursor.execute("""CREATE TABLE IF NOT EXISTS announcements (
+                id BIGINT AUTO_INCREMENT PRIMARY KEY, class_id INT NOT NULL,
+                title VARCHAR(160) NOT NULL, content TEXT NOT NULL,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_announcement_class(class_id)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci""")
+            cursor.execute("""CREATE TABLE IF NOT EXISTS student_reports (
+                id BIGINT AUTO_INCREMENT PRIMARY KEY, user_id INT NOT NULL,
+                content TEXT NOT NULL, status VARCHAR(16) NOT NULL DEFAULT 'unread',
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_report_user(user_id)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci""")
+            definitions={"class_id":"INT NULL","password_hash":"VARCHAR(255) NULL","status":"VARCHAR(24) NOT NULL DEFAULT 'active'","deleted_at":"DATETIME NULL"}
+            insert="INSERT IGNORE INTO school_classes(name,storage_key) VALUES (%s,%s)"
+        columns=self._columns(cursor,"storage_users")
+        for name,definition in definitions.items():
+            if name not in columns:
+                cursor.execute(f"ALTER TABLE storage_users ADD COLUMN {name} {definition}")
+        cursor.execute(insert,("111","111"))
+
     def find_user_by_username(self, username: str):
         if not username:
             return None
@@ -264,8 +329,8 @@ class DatabaseManager:
         conn = self.get_connection()
         cursor = self.cursor(conn, dictionary=True)
         cursor.execute(
-            f"SELECT id, username, storage_key FROM storage_users "
-            f"WHERE username = {ph} LIMIT 1",
+            f"SELECT u.id,u.username,u.storage_key,u.class_id,u.password_hash,u.status,c.name AS class_name,c.storage_key AS class_storage_key FROM storage_users u JOIN school_classes c ON c.id=u.class_id "
+            f"WHERE u.username = {ph} LIMIT 1",
             (username,),
         )
         row = cursor.fetchone()
@@ -278,8 +343,8 @@ class DatabaseManager:
         conn = self.get_connection()
         cursor = self.cursor(conn, dictionary=True)
         cursor.execute(
-            f"SELECT id, username, storage_key FROM storage_users "
-            f"WHERE id = {ph} LIMIT 1",
+            f"SELECT u.id,u.username,u.storage_key,u.class_id,u.password_hash,u.status,c.name AS class_name,c.storage_key AS class_storage_key FROM storage_users u JOIN school_classes c ON c.id=u.class_id "
+            f"WHERE u.id = {ph} LIMIT 1",
             (user_id,),
         )
         row = cursor.fetchone()

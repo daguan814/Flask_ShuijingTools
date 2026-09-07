@@ -8,6 +8,7 @@ from ..config import SECRET_KEY
 
 from ..auth_service import auth_service
 from ..file_service import file_service
+from ..school_service import school_service
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/api/auth")
 
@@ -53,10 +54,12 @@ def login():
         return _login_response({"detail": "invalid json"}, 400, device_id)
 
     username = str(payload.get("username", "")).strip()
-    if not username:
-        return _login_response({"detail": "username is required"}, 400, device_id)
+    password = str(payload.get("password", ""))
+    class_id = payload.get("class_id")
+    if not username or not password or not class_id:
+        return _login_response({"detail": "班级、姓名和密码均为必填项"}, 400, device_id)
 
-    user = auth_service.login(username)
+    user = auth_service.login(class_id, username, password)
     if not user:
         attempt = auth_service.record_login_failure(device_key)
         if attempt["blocked"]:
@@ -70,7 +73,7 @@ def login():
             )
         remaining = auth_service.MAX_LOGIN_FAILURES - attempt["failed_count"]
         return _login_response(
-            {"detail": f"用户不存在，还可尝试 {remaining} 次。"},
+            {"detail": f"班级、姓名或密码错误，还可尝试 {remaining} 次。"},
             404,
             device_id,
         )
@@ -97,3 +100,30 @@ def logout():
     if authorization.lower().startswith("bearer "):
         auth_service.revoke_session(authorization[7:].strip())
     return "", 204
+
+
+@auth_bp.get("/classes")
+def classes():
+    return jsonify({"classes": school_service.classes()})
+
+
+@auth_bp.post("/register")
+def register():
+    payload=request.get_json(silent=True) or {}; password=str(payload.get("password",""))
+    if password != str(payload.get("confirm_password","")): return jsonify({"detail":"两次密码不一致"}),400
+    try: request_id=school_service.register(payload.get("class_id"),payload.get("username"),password)
+    except FileExistsError as exc: return jsonify({"detail":str(exc)}),409
+    except (ValueError,TypeError) as exc: return jsonify({"detail":str(exc)}),400
+    return jsonify({"id":request_id,"detail":"注册申请已提交，请等待管理员审核"}),201
+
+
+@auth_bp.get("/announcements")
+def announcements():
+    return jsonify({"items":school_service.announcements_for(g.current_user["class_id"])})
+
+
+@auth_bp.post("/reports")
+def report():
+    try: school_service.add_report(g.current_user["id"],(request.get_json(silent=True) or {}).get("content"))
+    except ValueError as exc: return jsonify({"detail":str(exc)}),400
+    return "",204

@@ -1,20 +1,25 @@
 # 水镜云盘（ShuijingTools）
 
-一个轻量的多用户文件存储网站，采用 Flask、MySQL 和原生 HTML/CSS/JavaScript 构建。每个用户拥有独立目录，可以在网页中浏览、上传、预览、移动、删除和下载文件。
+面向教学场景的轻量云盘，采用 Flask、MySQL 和原生 HTML/CSS/JavaScript 构建。系统按“管理员 → 班级 → 学生”组织：学生保存课堂文件，管理员管理班级、账号、文件、公告和学习汇报。
 
 
 
 ## 功能
 
-- 输入已有用户名进入对应存储空间；
-- 文件与文件夹分用户隔离存储；
+- 学生注册时选择班级，填写姓名、密码和确认密码，审核通过后才能登录；
+- 学生按班级和姓名隔离存储，目录结构为 `storage/<班级>/<学生姓名>/`；
+- 管理员后台位于 `/admin/`，可以新增、改名和删除空班级；
+- 管理员可以审核注册、修改学生姓名/班级/密码、禁用账号，并谨慎删除学生；
+- 管理员改名或转班时，对应文件目录同步移动；
+- 管理员可以进入任意学生目录，浏览、上传、新建、重命名、移动、删除和下载文件；
+- 管理员可以按班级发布公告，学生可以向管理员提交学习汇报；
 - 浏览目录、查看修改时间和普通文件大小；
 - 文件夹显示直接下一层的文件夹数、文件数以及全部内容总大小；
 - 上传单个文件、多个文件或完整文件夹；
 - 支持拖放上传并保留目录结构；
 - 新建文件夹、单项重命名、批量移动和批量删除；
 - 文件列表较长时，路径、上传和批量操作工具栏会固定在页面顶部；
-- 删除内容进入按用户隔离的回收站，输入管理密码后可恢复；
+- 学生删除内容后进入 `storage/回收站/` 下的统一回收站，只有管理员可以恢复；
 - 常见图片、文档、文本、音视频文件在线预览；
 - 单个文件使用浏览器原生下载，支持条件请求和 Range；
 - 多文件或文件夹在服务器临时生成 ZIP 后下载；
@@ -23,9 +28,7 @@
 - 同一浏览器连续登录失败5次后锁定5小时；
 - 显示用户已用空间和服务器磁盘容量。
 
-当前预置用户：`shuijing`、`txt`。
-
-> 当前登录方式仅校验用户名，不要求密码。不要将未知用户名加入数据库。
+现有账号升级时统一归入默认班级 `111`。由于旧账号没有密码，迁移后状态为“待设置密码”，管理员设置密码后即可启用。
 
 ## 目录结构
 
@@ -38,10 +41,11 @@
 │   ├── auth_service.py            登录会话
 │   ├── file_service.py            文件隔离、路径校验和 ZIP 生成
 │   ├── log_service.py             用户文件操作日志
-│   ├── recycle_service.py         回收站移动与恢复
+│   ├── recycle_service.py         统一回收站移动与管理员恢复
+│   ├── school_service.py          班级、注册、学生、公告和汇报
 │   ├── routes/                    API 路由
 │   └── storage/                   本地预览存储（生产环境不使用）
-├── frontend/                      静态前端
+├── frontend/                      学生端和 `/admin/` 管理端
 ├── deploy/                        Nginx、systemd 和部署说明
 ├── tests/                         集成测试
 ├── .env.example                   环境变量示例
@@ -53,18 +57,21 @@
 生产文件保存在：
 
 ```text
-/vol2/1000/backup/ShuijingTools/storage/<username>/
+/vol2/1000/backup/ShuijingTools/storage/<班级>/<学生姓名>/
 ```
 
 例如：
 
 ```text
 storage/
-├── shuijing/
-└── txt/
+├── 111/
+│   ├── shuijing/
+│   └── stu_203/
+└── 回收站/
+    └── 111/
 ```
 
-用户名只能包含英文字母、数字、下划线和短横线，最长64个字符。后端会校验所有相对路径，拒绝绝对路径、`..` 和逃逸用户目录的访问。
+班级名和学生姓名最长64个字符，不允许斜杠、控制字符、`.` 或 `..`。学生姓名可使用中文、字母、数字、下划线和短横线。后端会校验所有相对路径，拒绝绝对路径、`..` 和逃逸学生目录的访问。
 
 文件夹大小不在目录列表中实时计算，以免递归扫描大量文件导致页面卡顿；普通文件仍显示实际大小。
 
@@ -124,8 +131,9 @@ python3 -m http.server 5173 -d frontend
 | `APP_HOST` | `0.0.0.0` | 开发服务器监听地址 |
 | `APP_PORT` | `8080` | 开发服务器端口 |
 | `STORAGE_ROOT` | `backend/storage` | 用户文件根目录 |
-| `RECYCLE_ROOT` | `recycle_bin` | 回收站文件根目录 |
-| `RECYCLE_BIN_PASSWORD` | 空 | 恢复回收站内容所需的管理密码 |
+| `RECYCLE_ROOT` | `STORAGE_ROOT/回收站` | 统一回收站文件根目录 |
+| `ADMIN_USERNAME` | `shuijing` | 管理员账号 |
+| `ADMIN_PASSWORD` | 空 | 管理员密码，生产环境必须配置 |
 | `MAX_CONTENT_LENGTH` | `10737418240` | 单次请求最大10GB |
 | `SECRET_KEY` | 无安全默认值 | 生产签名密钥，必须配置 |
 | `ALLOWED_ORIGINS` | `http://127.0.0.1:5173` | 逗号分隔的 CORS 来源 |
@@ -135,7 +143,9 @@ python3 -m http.server 5173 -d frontend
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
 | `GET` | `/api/health` | 健康检查 |
-| `POST` | `/api/auth/login` | 使用用户名登录 |
+| `GET` | `/api/auth/classes` | 注册和登录可选择的班级 |
+| `POST` | `/api/auth/register` | 提交学生注册申请 |
+| `POST` | `/api/auth/login` | 使用班级、姓名和密码登录 |
 | `GET` | `/api/auth/me` | 当前用户和容量信息 |
 | `POST` | `/api/auth/logout` | 注销当前会话 |
 | `GET` | `/api/files?path=` | 列出目录 |
@@ -152,8 +162,16 @@ python3 -m http.server 5173 -d frontend
 | `POST` | `/api/files/preview/start` | 创建预览会话 |
 | `GET` | `/preview/<path>` | 使用预览会话打开文件 |
 | `GET` | `/api/logs` | 查询当前用户的文件操作日志，可使用 `date`、`action`、`page`、`page_size` 筛选和分页 |
-| `GET` | `/api/recycle` | 查询当前用户的回收站 |
-| `POST` | `/api/recycle/<id>/restore` | 使用回收站密码恢复项目 |
+| `GET` | `/api/auth/announcements` | 当前班级公告 |
+| `POST` | `/api/auth/reports` | 向管理员提交汇报 |
+| `POST` | `/api/admin/login` | 管理员登录 |
+| `GET` | `/api/admin/overview` | 班级、学生、申请和汇报总览 |
+| `POST/PATCH/DELETE` | `/api/admin/classes...` | 管理班级及联动目录 |
+| `POST` | `/api/admin/requests/<id>/review` | 审核注册申请 |
+| `PATCH/DELETE` | `/api/admin/students/<id>` | 管理学生及联动目录 |
+| `GET/POST` | `/api/admin/students/<id>/...` | 管理学生文件 |
+| `GET` | `/api/admin/recycle` | 查看统一回收站 |
+| `POST` | `/api/admin/recycle/<id>/restore` | 管理员恢复文件 |
 
 除健康检查、登录和签名下载链接外，API 需要：
 
@@ -171,7 +189,7 @@ STORAGE_ROOT=/tmp/shuijingtools_test_storage \
 python -m unittest discover -s tests -v
 ```
 
-测试覆盖用户名目录、单文件下载、批量 ZIP 和用户文件隔离。
+测试覆盖注册审核、密码登录、班级/学生目录、文件上传、公告、汇报、统一回收站恢复，以及学生改名和转班的目录联动。
 
 ## 生产部署
 
@@ -180,8 +198,8 @@ python -m unittest discover -s tests -v
 - Nginx 容器 `shuijing-nginx`：TLS、静态前端和反向代理；
 - systemd 服务 `shuijing-tools.service`：运行两个 Gunicorn worker；
 - MySQL 容器：保存用户、会话和文件操作日志；
-- `storage/`：保存用户真实文件。
-- `recycle_bin/`：保存用户删除后等待恢复的文件。
+- `storage/`：保存按班级和学生划分的真实文件，以及其中的统一回收站。
+- 旧的 `recycle_bin/` 仅用于迁移前历史数据，迁移后不再写入。
 
 后端与 Nginx 的长请求超时均为600秒。完整更新命令和回滚说明见 `deploy/README.md`。
 

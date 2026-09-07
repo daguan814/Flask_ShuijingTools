@@ -24,16 +24,27 @@ class FileService:
     """Filesystem storage scoped to one user's storage directory."""
 
     def ensure_user_root(self, user):
-        root = STORAGE_ROOT / self.normalize_username(user["username"])
+        class_key = self.normalize_storage_name(user["class_storage_key"])
+        student_key = self.normalize_storage_name(user["storage_key"])
+        root = STORAGE_ROOT / class_key / student_key
         root.mkdir(parents=True, exist_ok=True)
         return root
+
+    @staticmethod
+    def normalize_storage_name(raw: str) -> str:
+        name = str(raw or "").strip()
+        if not name or len(name) > 64 or name in (".", ".."):
+            raise ValueError("invalid storage name")
+        if any(char in name for char in ("/", "\\", "\x00")) or any(ord(char) < 32 for char in name):
+            raise ValueError("invalid storage name")
+        return name
 
     @staticmethod
     def normalize_username(raw: str) -> str:
         username = str(raw or "").strip()
         if not username or len(username) > 64:
             raise ValueError("invalid username")
-        if not re.fullmatch(r"[A-Za-z0-9_-]+", username):
+        if not all(char.isalnum() or char in "_-" for char in username):
             raise ValueError("invalid username")
         return username
 

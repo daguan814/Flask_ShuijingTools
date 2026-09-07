@@ -4,16 +4,17 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>水镜云盘</title>
-  <link rel="stylesheet" href="/styles.css?v=20260904-4">
+  <link rel="stylesheet" href="/styles.css?v=20260907-school-1">
 </head>
 <body>
   <div id="loginView" class="auth-screen">
     <div class="auth-card">
       <div class="auth-logo">水镜云盘</div>
-      <h1>输入用户名进入存储空间</h1>
-      <p class="auth-subtitle">请输入已注册的用户名</p>
+      <h1>学生云盘</h1>
+      <p class="auth-subtitle">选择班级并使用姓名和密码登录</p>
 
       <form id="loginForm" class="login-form">
+        <select id="classInput" required><option value="">请选择班级</option></select>
         <input
           id="usernameInput"
           type="text"
@@ -22,7 +23,18 @@
           maxlength="64"
           required
         >
+        <input id="passwordInput" type="password" autocomplete="current-password" placeholder="请输入密码" required>
         <button type="submit" class="primary-btn">进入云盘</button>
+      </form>
+
+      <button id="showRegisterBtn" class="auth-link-btn" type="button">申请注册</button>
+      <form id="registerForm" class="login-form hidden">
+        <select id="registerClass" required><option value="">请选择班级</option></select>
+        <input id="registerName" type="text" placeholder="学生姓名" maxlength="64" required>
+        <input id="registerPassword" type="password" placeholder="密码（至少6位）" required>
+        <input id="registerConfirm" type="password" placeholder="确认密码" required>
+        <button type="submit" class="primary-btn">提交注册申请</button>
+        <button id="cancelRegisterBtn" class="auth-link-btn" type="button">返回登录</button>
       </form>
 
       <div id="loginError" class="login-error" role="alert"></div>
@@ -50,9 +62,13 @@
           <span class="sidebar-icon">📒</span>
           <span>日志</span>
         </button>
-        <button id="recycleBtn" type="button" class="sidebar-link">
-          <span class="sidebar-icon">🗑️</span>
-          <span>回收站</span>
+        <button id="announcementsBtn" type="button" class="sidebar-link">
+          <span class="sidebar-icon">📢</span>
+          <span>班级公告</span>
+        </button>
+        <button id="reportsBtn" type="button" class="sidebar-link">
+          <span class="sidebar-icon">📝</span>
+          <span>提交汇报</span>
         </button>
         <p class="sidebar-hint">拖入文件或文件夹，自动上传到当前目录。</p>
         <div class="sidebar-footer">
@@ -166,31 +182,21 @@
           </div>
         </section>
 
-        <section id="recycleView" class="page-section hidden">
+        <section id="announcementsView" class="page-section hidden">
           <div class="panel-card">
-            <div class="panel-card-header log-header">
+            <div class="panel-card-header">
               <div>
-                <h2>回收站</h2>
-                <p>删除的文件和文件夹保存在这里，恢复时需要输入回收站密码。</p>
+                <h2>班级公告</h2>
+                <p>查看管理员发布给本班的通知。</p>
               </div>
-              <button id="refreshRecycleBtn" type="button" class="secondary-btn">刷新回收站</button>
             </div>
           </div>
-          <div class="recycle-table-wrap">
-            <table class="recycle-table">
-              <thead>
-                <tr>
-                  <th>名称</th>
-                  <th>原位置</th>
-                  <th class="recycle-time-col">删除时间</th>
-                  <th class="recycle-size-col">大小</th>
-                  <th class="recycle-action-col">操作</th>
-                </tr>
-              </thead>
-              <tbody id="recycleTableBody"></tbody>
-            </table>
-            <div id="recycleEmpty" class="empty-message hidden">回收站为空。</div>
-          </div>
+          <div id="announcementsList" class="message-list"></div>
+        </section>
+
+        <section id="reportsView" class="page-section hidden">
+          <div class="panel-card"><div class="panel-card-header"><div><h2>向管理员汇报</h2><p>可以汇报学习进度、问题或需要帮助的事项。</p></div></div></div>
+          <form id="reportForm" class="report-form"><textarea id="reportContent" maxlength="2000" placeholder="请输入汇报内容" required></textarea><button class="primary-btn" type="submit">提交汇报</button></form>
         </section>
       </main>
     </div>
@@ -219,6 +225,6 @@
 
   <div id="toast" class="toast" role="status"></div>
 
-  <script src="/app.js?v=20260904-4"></script>
+  <script src="/app.js?v=20260907-school-1"></script>
 </body>
 </html>

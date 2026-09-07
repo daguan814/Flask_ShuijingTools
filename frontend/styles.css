@@ -28,7 +28,9 @@ body {
 }
 
 button,
-input {
+input,
+select,
+textarea {
   font: inherit;
 }
 
@@ -85,7 +87,8 @@ button {
   gap: 12px;
 }
 
-.login-form input {
+.login-form input,
+.login-form select {
   width: 100%;
   padding: 13px 15px;
   border: 1px solid var(--border);
@@ -94,6 +97,16 @@ button {
   outline: none;
   text-align: center;
 }
+
+.auth-link-btn { margin-top: 14px; border: 0; background: transparent; color: var(--primary); font-weight: 650; }
+#registerForm { margin-top: 18px; }
+.message-list { display: grid; gap: 12px; margin-top: 14px; }
+.message-card { padding: 16px; border: 1px solid var(--border); border-radius: 12px; background: var(--panel); }
+.message-card h3 { margin: 0 0 8px; }
+.message-card p { margin: 0 0 10px; white-space: pre-wrap; line-height: 1.65; }
+.message-card time { color: var(--muted); font-size: .82rem; }
+.report-form { display: grid; gap: 12px; margin-top: 14px; padding: 16px; border: 1px solid var(--border); border-radius: 12px; background: var(--panel); }
+.report-form textarea { min-height: 180px; resize: vertical; padding: 12px; border: 1px solid var(--border); border-radius: 10px; }
 
 .login-form input:focus {
   border-color: var(--primary);

@@ -1,0 +1,151 @@
+import os
+import tempfile
+import unittest
+from io import BytesIO
+from pathlib import Path
+
+
+_TEMP_DIR = tempfile.TemporaryDirectory()
+_ROOT = Path(_TEMP_DIR.name)
+os.environ.update(
+    {
+        "DB_DRIVER": "sqlite",
+        "SQLITE_DB_PATH": str(_ROOT / "test.db"),
+        "STORAGE_ROOT": str(_ROOT / "storage"),
+        "RECYCLE_ROOT": str(_ROOT / "storage" / "回收站"),
+        "SECRET_KEY": "school-flow-test-secret",
+        "ADMIN_USERNAME": "admin",
+        "ADMIN_PASSWORD": "admin-test-password",
+    }
+)
+
+from backend.app import create_app
+
+
+class SchoolFlowTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.app = create_app()
+        cls.client = cls.app.test_client()
+
+    def admin_headers(self):
+        response = self.client.post(
+            "/api/admin/login",
+            json={"username": "admin", "password": "admin-test-password"},
+        )
+        self.assertEqual(response.status_code, 200)
+        return {"Authorization": f"Bearer {response.json['token']}"}
+
+    def test_registration_files_messages_and_admin_restore(self):
+        classes = self.client.get("/api/auth/classes").json["classes"]
+        class_111 = next(item for item in classes if item["name"] == "111")
+
+        response = self.client.post(
+            "/api/auth/register",
+            json={
+                "class_id": class_111["id"],
+                "username": "测试学生",
+                "password": "student123",
+                "confirm_password": "student123",
+            },
+        )
+        self.assertEqual(response.status_code, 201)
+
+        headers = self.admin_headers()
+        overview = self.client.get("/api/admin/overview", headers=headers).json
+        request_id = next(
+            item["id"] for item in overview["requests"] if item["username"] == "测试学生"
+        )
+        response = self.client.post(
+            f"/api/admin/requests/{request_id}/review",
+            headers=headers,
+            json={"approve": True},
+        )
+        self.assertEqual(response.status_code, 204)
+
+        response = self.client.post(
+            "/api/auth/login",
+            json={
+                "class_id": class_111["id"],
+                "username": "测试学生",
+                "password": "student123",
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        student_headers = {"Authorization": f"Bearer {response.json['token']}"}
+        self.assertTrue((_ROOT / "storage" / "111" / "测试学生").is_dir())
+
+        response = self.client.post(
+            "/api/files/upload",
+            headers=student_headers,
+            data={
+                "path": "",
+                "relative_paths": "作业.txt",
+                "files": (BytesIO(b"homework"), "作业.txt"),
+            },
+            content_type="multipart/form-data",
+        )
+        self.assertEqual(response.status_code, 200)
+
+        self.assertEqual(
+            self.client.post(
+                "/api/admin/announcements",
+                headers=headers,
+                json={"class_id": class_111["id"], "title": "通知", "content": "明天上课"},
+            ).status_code,
+            204,
+        )
+        self.assertEqual(
+            self.client.post(
+                "/api/auth/reports", headers=student_headers, json={"content": "作业已完成"}
+            ).status_code,
+            204,
+        )
+        self.assertEqual(
+            self.client.post(
+                "/api/files/delete", headers=student_headers, json={"path": "作业.txt"}
+            ).status_code,
+            204,
+        )
+
+        overview = self.client.get("/api/admin/overview", headers=headers).json
+        student = next(item for item in overview["students"] if item["username"] == "测试学生")
+        self.assertEqual(overview["reports"][0]["content"], "作业已完成")
+        self.assertEqual(
+            self.client.get("/api/auth/announcements", headers=student_headers).json["items"][0]["title"],
+            "通知",
+        )
+        recycle = self.client.get("/api/admin/recycle", headers=headers).json["items"]
+        item = next(item for item in recycle if item["username"] == "测试学生")
+        response = self.client.post(
+            f"/api/admin/recycle/{item['id']}/restore",
+            headers=headers,
+            json={"user_id": student["id"]},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue((_ROOT / "storage" / "111" / "测试学生" / "作业.txt").is_file())
+
+        response = self.client.post(
+            "/api/admin/classes", headers=headers, json={"name": "二班"}
+        )
+        self.assertEqual(response.status_code, 201)
+        class_id = response.json["id"]
+        response = self.client.patch(
+            f"/api/admin/students/{student['id']}",
+            headers=headers,
+            json={"username": "新姓名", "class_id": class_id},
+        )
+        self.assertEqual(response.status_code, 204)
+        self.assertFalse((_ROOT / "storage" / "111" / "测试学生").exists())
+        self.assertTrue((_ROOT / "storage" / "二班" / "新姓名" / "作业.txt").is_file())
+        self.assertEqual(self.client.get("/api/auth/me", headers=student_headers).status_code, 401)
+
+        response = self.client.patch(
+            f"/api/admin/classes/{class_id}", headers=headers, json={"name": "新二班"}
+        )
+        self.assertEqual(response.status_code, 204)
+        self.assertTrue((_ROOT / "storage" / "新二班" / "新姓名" / "作业.txt").is_file())
+
+
+if __name__ == "__main__":
+    unittest.main()
