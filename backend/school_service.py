@@ -94,7 +94,6 @@ class SchoolService:
         ph=db_manager.placeholder(); conn=db_manager.get_connection(); cursor=db_manager.cursor(conn,dictionary=True)
         cursor.execute(f"SELECT * FROM school_classes WHERE id={ph}",(class_id,)); row=cursor.fetchone()
         if not row: cursor.close(); conn.close(); raise ValueError("班级不存在")
-        if row["name"] == "111": cursor.close(); conn.close(); raise ValueError("默认班级 111 不能删除")
         cursor.execute(f"SELECT COUNT(*) AS total FROM storage_users WHERE class_id={ph} AND status!='deleted'",(class_id,))
         if cursor.fetchone()["total"]: cursor.close(); conn.close(); raise ValueError("班级内仍有学生，不能删除")
         path=STORAGE_ROOT/row["storage_key"]
