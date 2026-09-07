@@ -28,8 +28,7 @@ body {
 }
 
 button,
-input,
-select {
+input {
   font: inherit;
 }
 
@@ -86,8 +85,7 @@ button {
   gap: 12px;
 }
 
-.login-form input,
-.login-form select {
+.login-form input {
   width: 100%;
   padding: 13px 15px;
   border: 1px solid var(--border);
@@ -95,18 +93,6 @@ button {
   background: #fbfcff;
   outline: none;
   text-align: center;
-}
-
-.auth-link-btn {
-  margin-top: 14px;
-  border: 0;
-  background: transparent;
-  color: var(--primary);
-  font-weight: 650;
-}
-
-#registerForm {
-  margin-top: 18px;
 }
 
 .login-form input:focus {
@@ -470,20 +456,6 @@ button {
   font-weight: 700;
   letter-spacing: 0.04em;
   text-align: left;
-}
-
-.sort-btn {
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: inherit;
-  font-weight: inherit;
-  cursor: pointer;
-}
-
-.sort-btn:hover,
-.sort-btn.active {
-  color: var(--primary);
 }
 
 .file-table td {

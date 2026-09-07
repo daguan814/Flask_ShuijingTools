@@ -8,7 +8,6 @@ from ..config import SECRET_KEY
 
 from ..auth_service import auth_service
 from ..file_service import file_service
-from ..account_service import account_service
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/api/auth")
 
@@ -54,12 +53,10 @@ def login():
         return _login_response({"detail": "invalid json"}, 400, device_id)
 
     username = str(payload.get("username", "")).strip()
-    password = str(payload.get("password", ""))
-    group_id = payload.get("group_id")
-    if not username or not password or not group_id:
-        return _login_response({"detail": "用户组、用户名和密码均为必填项"}, 400, device_id)
+    if not username:
+        return _login_response({"detail": "username is required"}, 400, device_id)
 
-    user = auth_service.login(group_id, username, password)
+    user = auth_service.login(username)
     if not user:
         attempt = auth_service.record_login_failure(device_key)
         if attempt["blocked"]:
@@ -73,7 +70,7 @@ def login():
             )
         remaining = auth_service.MAX_LOGIN_FAILURES - attempt["failed_count"]
         return _login_response(
-            {"detail": f"用户组、用户名或密码错误，还可尝试 {remaining} 次。"},
+            {"detail": f"用户不存在，还可尝试 {remaining} 次。"},
             404,
             device_id,
         )
@@ -100,25 +97,3 @@ def logout():
     if authorization.lower().startswith("bearer "):
         auth_service.revoke_session(authorization[7:].strip())
     return "", 204
-
-
-@auth_bp.route("/groups", methods=["GET"])
-def groups():
-    return jsonify({"groups": account_service.groups()})
-
-
-@auth_bp.route("/register", methods=["POST"])
-def register():
-    payload = request.get_json(silent=True) or {}
-    password = str(payload.get("password", ""))
-    if password != str(payload.get("confirm_password", "")):
-        return jsonify({"detail": "两次输入的密码不一致"}), 400
-    try:
-        request_id = account_service.register(
-            payload.get("group_id"), payload.get("username"), password
-        )
-    except FileExistsError as exc:
-        return jsonify({"detail": str(exc)}), 409
-    except (ValueError, TypeError) as exc:
-        return jsonify({"detail": str(exc)}), 400
-    return jsonify({"id": request_id, "detail": "注册申请已提交，请等待管理员审核"}), 201

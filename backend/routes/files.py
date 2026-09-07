@@ -56,17 +56,6 @@ def upload_files():
     if len(relative_paths) != len(files):
         return jsonify({"detail": "relative_paths count does not match files"}), 400
 
-    incoming_size = 0
-    for file_storage in files:
-        stream = file_storage.stream
-        position = stream.tell()
-        stream.seek(0, os.SEEK_END)
-        incoming_size += stream.tell()
-        stream.seek(position)
-    quota = int(g.current_user["quota_bytes"] or 0)
-    if quota and file_service.storage_usage(g.current_user)["used"] + incoming_size > quota:
-        return jsonify({"detail": "上传后将超过当前网盘额度，请联系管理员调整额度"}), 413
-
     uploaded = []
     uploaded_relative_paths = []
     try:

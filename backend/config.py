@@ -11,9 +11,6 @@ RECYCLE_ROOT = Path(
     os.getenv("RECYCLE_ROOT", str(STORAGE_ROOT.parent / "recycle_bin"))
 ).resolve()
 RECYCLE_BIN_PASSWORD = os.getenv("RECYCLE_BIN_PASSWORD", "")
-ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "shuijing")
-ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "")
-DEFAULT_QUOTA_BYTES = int(os.getenv("DEFAULT_QUOTA_BYTES", str(5 * 1024**3)))
 
 DB_HOST = os.getenv("DB_HOST", "127.0.0.1")
 DB_PORT = int(os.getenv("DB_PORT", "3306"))
