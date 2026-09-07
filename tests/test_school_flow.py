@@ -112,6 +112,20 @@ class SchoolFlowTest(unittest.TestCase):
             ).status_code,
             200,
         )
+        self.assertEqual(
+            self.client.post(
+                f"/api/admin/classes/{class_111['id']}/batch-download",
+                headers=headers,
+                json={"paths": ["测试学生/作业.txt"]},
+            ).status_code,
+            200,
+        )
+        protected = self.client.post(
+            f"/api/admin/classes/{class_111['id']}/batch-delete",
+            headers=headers,
+            json={"paths": ["测试学生"]},
+        ).json["results"][0]
+        self.assertFalse(protected["deleted"])
 
         self.assertEqual(
             self.client.post(

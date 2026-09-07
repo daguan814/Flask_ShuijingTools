@@ -1,5 +1,8 @@
 from functools import wraps
 import mimetypes
+import tempfile
+import zipfile
+from pathlib import Path
 
 from flask import Blueprint, current_app, jsonify, request, send_file
 from itsdangerous import BadSignature, SignatureExpired
@@ -177,6 +180,29 @@ def class_download(class_id):
         response.call_on_close(lambda:archive.unlink(missing_ok=True));return response
     except Exception as exc:return jsonify({"detail":str(exc)}),400
 
+@admin_bp.post("/classes/<int:class_id>/batch-download")
+@admin_required
+def class_batch_download(class_id):
+    paths=(request.get_json(silent=True) or {}).get("paths",[])
+    if not isinstance(paths,list) or not paths:return jsonify({"detail":"请选择要下载的项目"}),400
+    temp=tempfile.NamedTemporaryFile(prefix="shuijing-class-",suffix=".zip",delete=False);archive_path=Path(temp.name);temp.close()
+    try:
+        with zipfile.ZipFile(archive_path,"w",zipfile.ZIP_DEFLATED) as archive:
+            for raw_path in paths:
+                user,sub_path,class_path=_class_path(class_id,raw_path)
+                source=file_service.resolve_user_path(user,sub_path)
+                if not source.exists():raise FileNotFoundError(class_path)
+                if source.is_dir():
+                    for child in source.rglob("*"):
+                        if child.name==".DS_Store" or child.is_symlink():continue
+                        child_rel=child.relative_to(source)
+                        archive.write(str(child),arcname=str(Path(class_path)/child_rel))
+                elif not source.is_symlink():archive.write(str(source),arcname=class_path)
+        response=send_file(archive_path,as_attachment=True,download_name="班级文件.zip")
+        response.call_on_close(lambda:archive_path.unlink(missing_ok=True));return response
+    except Exception as exc:
+        archive_path.unlink(missing_ok=True);return jsonify({"detail":str(exc)}),400
+
 @admin_bp.get("/classes/<int:class_id>/preview")
 @admin_required
 def class_preview(class_id):
@@ -211,6 +237,19 @@ def class_move(class_id):
         moved=file_service.move_paths(destination_user,sources,destination_sub)
     except Exception as exc:return jsonify({"detail":str(exc)}),400
     return jsonify({"moved":moved})
+
+@admin_bp.post("/classes/<int:class_id>/batch-delete")
+@admin_required
+def class_batch_delete(class_id):
+    paths=(request.get_json(silent=True) or {}).get("paths",[])
+    if not isinstance(paths,list) or not paths:return jsonify({"detail":"请选择要删除的项目"}),400
+    results=[]
+    for raw_path in paths:
+        try:
+            user,sub_path,class_path=_class_path(class_id,raw_path,False)
+            recycle_service.move_to_recycle(user,sub_path);results.append({"path":class_path,"deleted":True})
+        except Exception as exc:results.append({"path":str(raw_path),"deleted":False,"error":str(exc)})
+    return jsonify({"results":results})
 
 @admin_bp.get("/students/<int:user_id>/files")
 @admin_required

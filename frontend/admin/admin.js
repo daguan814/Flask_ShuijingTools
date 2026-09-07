@@ -3,6 +3,8 @@ const esc = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({"&":"
 let token = sessionStorage.getItem("school_admin") || "";
 let state = {classes: [], students: [], requests: [], reports: []};
 let path = "";
+let currentEntries = [];
+let selectedFiles = new Set();
 let logPage = 1;
 let logTotalPages = 1;
 
@@ -164,33 +166,29 @@ $("announcementForm").addEventListener("submit", async (event) => {
 });
 
 $("classFileSelect").addEventListener("change", () => loadFiles(""));
-$("upBtn").addEventListener("click", () => loadFiles(path.includes("/") ? path.slice(0, path.lastIndexOf("/")) : ""));
-$("mkdirBtn").addEventListener("click", async () => { const name = prompt("文件夹名称"); if (!name) return; const response=await api(`/classes/${$("classFileSelect").value}/mkdir`, {method: "POST", json: {path, name}}); note(response.ok?"文件夹已创建":await detail(response)); loadFiles(path); });
+$("refreshFiles").addEventListener("click", () => loadFiles(path));
+$("mkdirBtn").addEventListener("click", async () => { const name=prompt("文件夹名称"); if(!name)return; const response=await api(`/classes/${$("classFileSelect").value}/mkdir`,{method:"POST",json:{path,name}}); note(response.ok?"文件夹已创建":await detail(response)); loadFiles(path); });
 $("uploadBtn").addEventListener("click", () => $("uploadInput").click());
-$("uploadInput").addEventListener("change", async (event) => { const form = new FormData(); form.append("path", path); [...event.target.files].forEach((file) => { form.append("files", file); form.append("relative_paths", file.name); }); const response=await api(`/classes/${$("classFileSelect").value}/upload`, {method: "POST", body: form}); note(response.ok?"上传完成":await detail(response)); event.target.value = ""; loadFiles(path); });
+$("uploadInput").addEventListener("change", async (event) => { const form=new FormData();form.append("path",path);[...event.target.files].forEach((file)=>{form.append("files",file);form.append("relative_paths",file.name)});const response=await api(`/classes/${$("classFileSelect").value}/upload`,{method:"POST",body:form});note(response.ok?"上传完成":await detail(response));event.target.value="";loadFiles(path); });
 
-function previewable(name) {
-  return /\.(png|jpe?g|gif|webp|svg|bmp|pdf|txt|md|csv|json|html?|mp3|wav|ogg|mp4|webm)$/i.test(name);
-}
+function previewable(name){return /\.(png|jpe?g|gif|webp|svg|bmp|pdf|txt|md|csv|json|html?|mp3|wav|ogg|mp4|webm)$/i.test(name)}
+function fileIcon(item){if(item.type==="folder")return "📁";const ext=item.name.split(".").pop().toLowerCase();if(["png","jpg","jpeg","gif","webp","svg"].includes(ext))return "🖼️";if(["doc","docx"].includes(ext))return "📘";if(["xls","xlsx","csv"].includes(ext))return "📗";if(["ppt","pptx"].includes(ext))return "📙";if(ext==="pdf")return "📕";if(["zip","rar","7z"].includes(ext))return "🗜️";return "📄"}
+function renderClassBreadcrumb(){const parts=path?path.split("/"):[];let html=`<button data-crumb="">全部学生</button>`,current="";for(const part of parts){current=current?`${current}/${part}`:part;html+=`<span class="crumb-sep">/</span><button data-crumb="${esc(current)}">${esc(part)}</button>`}$("classBreadcrumb").innerHTML=html}
+function updateFileSelection(){const count=selectedFiles.size,protectedRoot=[...selectedFiles].some((selected)=>!selected.includes("/"));$("fileSelectionCount").textContent=`已选择 ${count} 项`;$("batchDownload").disabled=!count;$("batchRename").disabled=count!==1||protectedRoot;$("batchMove").disabled=!count||protectedRoot;$("batchDelete").disabled=!count||protectedRoot;$("selectAllFiles").checked=currentEntries.length>0&&currentEntries.every((item)=>selectedFiles.has(item.path))}
 
-async function loadFiles(next) {
-  const id = $("classFileSelect").value; if (!id) { $("fileRows").innerHTML = ""; return; }
-  const response = await api(`/classes/${id}/files?path=${encodeURIComponent(next)}`); if (!response.ok) return;
-  const data = await response.json(); path = data.path; $("pathLabel").textContent = "/" + path;
-  const insideStudent = path.includes("/") || Boolean(path);
-  $("uploadBtn").disabled = !insideStudent; $("mkdirBtn").disabled = !insideStudent;
-  $("fileRows").innerHTML = data.entries.map((item) => { const studentRoot=item.type==="folder"&&!item.path.includes("/"); return `<tr><td>${item.type === "folder" ? `<button class="folder" data-open="${esc(item.path)}">📁 ${esc(item.name)}</button>` : esc(item.name)}</td><td>${item.type === "folder" ? "文件夹" : "文件"}</td><td>${esc(item.content_display)}</td><td>${esc(item.size_display)}</td><td><button data-download="${esc(item.path)}">下载</button> ${item.type==="file"&&previewable(item.name)?`<button data-preview="${esc(item.path)}">预览</button> `:""}${studentRoot?"":`<button data-move="${esc(item.path)}">移动</button> <button data-rename="${esc(item.path)}" data-name="${esc(item.name)}">改名</button> <button class="danger" data-delete="${esc(item.path)}">删除</button>`}</td></tr>`; }).join("");
-}
+async function loadFiles(next){const id=$("classFileSelect").value;if(!id){currentEntries=[];$("fileRows").innerHTML="";return}const response=await api(`/classes/${id}/files?path=${encodeURIComponent(next)}`);if(!response.ok){note(await detail(response));return}const data=await response.json();path=data.path;currentEntries=data.entries;selectedFiles.clear();renderClassBreadcrumb();const insideStudent=Boolean(path);$("uploadBtn").disabled=!insideStudent;$("mkdirBtn").disabled=!insideStudent;$("fileEmpty").classList.toggle("hidden",currentEntries.length>0);$("fileRows").innerHTML=currentEntries.map((item)=>{const canPreview=item.type==="file"&&previewable(item.name);return `<tr data-path="${esc(item.path)}" data-type="${item.type}"><td><input class="file-check" type="checkbox" data-path="${esc(item.path)}" aria-label="选择 ${esc(item.name)}"></td><td><button class="entry-button ${canPreview?"file-preview":""}" data-entry="${esc(item.path)}"><span class="entry-icon">${fileIcon(item)}</span><span>${esc(item.name)}</span></button></td><td>${esc(item.content_display||"--")}</td><td>${new Date(item.modified_at).toLocaleString()}</td><td>${esc(item.size_display)}</td></tr>`}).join("");updateFileSelection()}
 
-$("fileRows").addEventListener("click", async (event) => {
-  const id = $("classFileSelect").value; const button = event.target.closest("button"); if (!button) return;
-  if (button.dataset.open) return loadFiles(button.dataset.open);
-  if (button.dataset.rename) { const name = prompt("新名称", button.dataset.name); if (name) { const response=await api(`/classes/${id}/rename`, {method: "POST", json: {path: button.dataset.rename, name}}); note(response.ok?"重命名完成":await detail(response)); loadFiles(path); } }
-  if (button.dataset.move) { const destination=prompt("输入同一学生下的目标目录，例如：张三/作业",path.split("/")[0]); if(destination!==null){const response=await api(`/classes/${id}/move`,{method:"POST",json:{paths:[button.dataset.move],destination}});note(response.ok?"移动完成":await detail(response));loadFiles(path);} }
-  if (button.dataset.delete && confirm("删除后将进入统一回收站，确认？")) { const response=await api(`/classes/${id}/delete-file`, {method: "POST", json: {path: button.dataset.delete}}); note(response.ok?"已移入回收站":await detail(response)); loadFiles(path); }
-  if (button.dataset.preview) { const previewWindow=window.open("","_blank"); const response=await api(`/classes/${id}/preview?path=${encodeURIComponent(button.dataset.preview)}`); if(!response.ok){previewWindow?.close();note(await detail(response));return;} const url=URL.createObjectURL(await response.blob()); if(previewWindow)previewWindow.location.href=url; else note("浏览器阻止了预览窗口"); setTimeout(()=>URL.revokeObjectURL(url),60000); }
-  if (button.dataset.download) { const response = await api(`/classes/${id}/download?path=${encodeURIComponent(button.dataset.download)}`); if(!response.ok){note(await detail(response));return;} const blob = await response.blob(); const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = button.dataset.download.split("/").pop()+(response.headers.get("Content-Type")==="application/zip"?".zip":""); link.click(); setTimeout(()=>URL.revokeObjectURL(link.href),1000); }
-});
+$("classBreadcrumb").addEventListener("click",(event)=>{const button=event.target.closest("[data-crumb]");if(button)loadFiles(button.dataset.crumb)});
+$("fileRows").addEventListener("change",(event)=>{const box=event.target.closest(".file-check");if(!box)return;box.checked?selectedFiles.add(box.dataset.path):selectedFiles.delete(box.dataset.path);updateFileSelection()});
+$("selectAllFiles").addEventListener("change",(event)=>{currentEntries.forEach((item)=>event.target.checked?selectedFiles.add(item.path):selectedFiles.delete(item.path));document.querySelectorAll(".file-check").forEach((box)=>box.checked=event.target.checked);updateFileSelection()});
+$("fileRows").addEventListener("click",async(event)=>{if(event.target.closest(".file-check"))return;const button=event.target.closest("[data-entry]");if(!button)return;const item=currentEntries.find((entry)=>entry.path===button.dataset.entry);if(item.type==="folder")return loadFiles(item.path);if(previewable(item.name))return previewFile(item.path);downloadFiles([item.path])});
+
+async function previewFile(filePath){const previewWindow=window.open("","_blank");const response=await api(`/classes/${$("classFileSelect").value}/preview?path=${encodeURIComponent(filePath)}`);if(!response.ok){previewWindow?.close();note(await detail(response));return}const url=URL.createObjectURL(await response.blob());if(previewWindow)previewWindow.location.href=url;else note("浏览器阻止了预览窗口");setTimeout(()=>URL.revokeObjectURL(url),60000)}
+async function downloadFiles(paths){const id=$("classFileSelect").value;const response=paths.length===1?await api(`/classes/${id}/download?path=${encodeURIComponent(paths[0])}`):await api(`/classes/${id}/batch-download`,{method:"POST",json:{paths}});if(!response.ok){note(await detail(response));return}const blob=await response.blob(),link=document.createElement("a");link.href=URL.createObjectURL(blob);link.download=paths.length===1?paths[0].split("/").pop()+(response.headers.get("Content-Type")==="application/zip"?".zip":""):"班级文件.zip";link.click();setTimeout(()=>URL.revokeObjectURL(link.href),1000)}
+$("batchDownload").addEventListener("click",()=>downloadFiles([...selectedFiles]));
+$("batchRename").addEventListener("click",async()=>{const oldPath=[...selectedFiles][0],oldName=oldPath.split("/").pop(),name=prompt("新名称",oldName);if(!name)return;const response=await api(`/classes/${$("classFileSelect").value}/rename`,{method:"POST",json:{path:oldPath,name}});note(response.ok?"重命名完成":await detail(response));loadFiles(path)});
+$("batchMove").addEventListener("click",async()=>{const first=[...selectedFiles][0],student=first.split("/")[0],destination=prompt(`输入 ${student} 目录下的目标路径`,student);if(destination===null)return;const response=await api(`/classes/${$("classFileSelect").value}/move`,{method:"POST",json:{paths:[...selectedFiles],destination}});note(response.ok?"移动完成":await detail(response));loadFiles(path)});
+$("batchDelete").addEventListener("click",async()=>{if(!confirm(`确认删除选中的 ${selectedFiles.size} 项？删除后进入回收站。`))return;const response=await api(`/classes/${$("classFileSelect").value}/batch-delete`,{method:"POST",json:{paths:[...selectedFiles]}});note(response.ok?"已移入回收站":await detail(response));loadFiles(path)});
 
 function logType(content) {
   const action = String(content).split("：", 1)[0];
