@@ -36,7 +36,7 @@ def login():
 @admin_bp.get("/overview")
 @admin_required
 def overview():
-    return jsonify({"classes":school_service.classes(),"students":school_service.students(),"requests":school_service.requests(),"reports":school_service.reports()})
+    return jsonify({"classes":school_service.classes(),"students":school_service.students(),"requests":school_service.requests(),"reports":school_service.reports(),"announcements":school_service.announcements()})
 
 @admin_bp.get("/logs")
 @admin_required

@@ -172,6 +172,10 @@ class SchoolService:
     def announcements_for(self,class_id):
         ph=db_manager.placeholder(); return self.rows(f"SELECT id,title,content,created_at FROM announcements WHERE class_id={ph} ORDER BY id DESC",(class_id,))
 
+    def announcements(self):
+        return self.rows("""SELECT a.id,a.title,a.content,a.created_at,c.name AS class_name
+            FROM announcements a JOIN school_classes c ON c.id=a.class_id ORDER BY a.id DESC""")
+
     def create_announcement(self,class_id,title,content):
         if not str(title).strip() or not str(content).strip(): raise ValueError("标题和内容不能为空")
         ph=db_manager.placeholder(); conn=db_manager.get_connection(); cursor=db_manager.cursor(conn)
