@@ -4,7 +4,21 @@ const API_BASE =
     ? "http://127.0.0.1:8080"
     : "");
 
-let token = localStorage.getItem("storage_token") || "";
+const newSessionRequested = new URLSearchParams(location.search).get("new_session") === "1";
+if (newSessionRequested) {
+  sessionStorage.removeItem("storage_token");
+  sessionStorage.removeItem("storage_user");
+  history.replaceState(null, "", location.pathname);
+} else if (!sessionStorage.getItem("storage_token")) {
+  const legacyToken = localStorage.getItem("storage_token");
+  const legacyUser = localStorage.getItem("storage_user");
+  if (legacyToken) sessionStorage.setItem("storage_token", legacyToken);
+  if (legacyUser) sessionStorage.setItem("storage_user", legacyUser);
+}
+localStorage.removeItem("storage_token");
+localStorage.removeItem("storage_user");
+
+let token = sessionStorage.getItem("storage_token") || "";
 let currentUser = null;
 let currentPath = "";
 let entries = [];
@@ -160,8 +174,8 @@ function bindLogin() {
       const data = await response.json();
       token = data.token;
       currentUser = data.user;
-      localStorage.setItem("storage_token", token);
-      localStorage.setItem("storage_user", JSON.stringify(currentUser));
+      sessionStorage.setItem("storage_token", token);
+      sessionStorage.setItem("storage_user", JSON.stringify(currentUser));
       currentPath = "";
       showStorage();
       await loadUserInfo();
@@ -177,6 +191,10 @@ function bindLogin() {
 
 function bindStorage() {
   document.getElementById("logoutBtn")?.addEventListener("click", logout);
+  document.getElementById("newAccountBtn")?.addEventListener("click", () => {
+    const opened = window.open(`${window.location.origin}/?new_session=1`, "_blank");
+    if (!opened) showToast("浏览器阻止了新标签页，请允许弹出窗口。");
+  });
   document.getElementById("rootBtn")?.addEventListener("click", () => {
     switchView("files");
     navigateTo("");
@@ -358,7 +376,7 @@ async function loadCurrentUser() {
     }
     const data = await response.json();
     currentUser = data.user;
-    localStorage.setItem("storage_user", JSON.stringify(currentUser));
+    sessionStorage.setItem("storage_user", JSON.stringify(currentUser));
     renderUserInfo();
     showStorage();
     await loadCurrentDirectory();
@@ -375,7 +393,7 @@ async function loadUserInfo() {
     if (!response.ok) return;
     const data = await response.json();
     currentUser = data.user;
-    localStorage.setItem("storage_user", JSON.stringify(currentUser));
+    sessionStorage.setItem("storage_user", JSON.stringify(currentUser));
     renderUserInfo();
   } catch (_err) {
     // ignore transient user info refresh errors
@@ -1136,6 +1154,8 @@ function clearSession() {
   entries = [];
   selectedPaths.clear();
   moveDestination = "";
+  sessionStorage.removeItem("storage_token");
+  sessionStorage.removeItem("storage_user");
   localStorage.removeItem("storage_token");
   localStorage.removeItem("storage_user");
 }
