@@ -350,8 +350,6 @@ class FileService:
             with zipfile.ZipFile(temp_path, "w", zipfile.ZIP_DEFLATED) as archive:
                 for raw_path in paths:
                     rel = self.normalize_relative_path(raw_path)
-                    if not rel:
-                        raise ValueError("cannot download user root")
                     source = self.resolve_user_path(user, rel)
                     if not source.exists():
                         raise FileNotFoundError(rel)

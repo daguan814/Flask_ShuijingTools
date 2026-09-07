@@ -34,6 +34,7 @@ class SchoolFlowTest(unittest.TestCase):
             json={"username": "admin", "password": "admin-test-password"},
         )
         self.assertEqual(response.status_code, 200)
+
         return {"Authorization": f"Bearer {response.json['token']}"}
 
     def test_registration_files_messages_and_admin_restore(self):
@@ -86,6 +87,31 @@ class SchoolFlowTest(unittest.TestCase):
             content_type="multipart/form-data",
         )
         self.assertEqual(response.status_code, 200)
+
+        response = self.client.get(
+            f"/api/admin/classes/{class_111['id']}/files", headers=headers
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("测试学生", [item["name"] for item in response.json["entries"]])
+        response = self.client.get(
+            f"/api/admin/classes/{class_111['id']}/files?path=测试学生",
+            headers=headers,
+        )
+        self.assertIn("作业.txt", [item["name"] for item in response.json["entries"]])
+        self.assertEqual(
+            self.client.get(
+                f"/api/admin/classes/{class_111['id']}/preview?path=测试学生/作业.txt",
+                headers=headers,
+            ).status_code,
+            200,
+        )
+        self.assertEqual(
+            self.client.get(
+                f"/api/admin/classes/{class_111['id']}/download?path=测试学生",
+                headers=headers,
+            ).status_code,
+            200,
+        )
 
         self.assertEqual(
             self.client.post(

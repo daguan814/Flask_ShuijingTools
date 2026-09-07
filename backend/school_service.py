@@ -37,6 +37,13 @@ class SchoolService:
             usage=file_service.storage_usage(row); row["used_display"]=usage["used_display"]
         return rows
 
+    def students_for_class(self, class_id):
+        ph=db_manager.placeholder()
+        return self.rows(f"""SELECT u.id,u.username,u.storage_key,u.status,u.class_id,
+            c.name AS class_name,c.storage_key AS class_storage_key
+            FROM storage_users u JOIN school_classes c ON c.id=u.class_id
+            WHERE u.class_id={ph} AND u.status!='deleted' ORDER BY u.username""",(class_id,))
+
     def requests(self):
         return self.rows("""SELECT r.id,r.username,r.class_id,r.created_at,c.name AS class_name FROM registration_requests r
             JOIN school_classes c ON c.id=r.class_id WHERE r.status='pending' ORDER BY r.id""")

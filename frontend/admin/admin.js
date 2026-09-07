@@ -74,7 +74,7 @@ function renderOverview() {
   $("announcementClass").innerHTML = classOptions;
   $("logClass").innerHTML = `<option value="">全部班级</option>${classOptions}`;
   renderLogStudents();
-  $("studentSelect").innerHTML = `<option value="">选择学生</option>` + state.students.map((item) => `<option value="${item.id}">${esc(item.class_name)} / ${esc(item.username)}</option>`).join("");
+  $("classFileSelect").innerHTML = `<option value="">选择班级</option>` + state.classes.map((item) => `<option value="${item.id}">${esc(item.name)}</option>`).join("");
   $("messageBadge").textContent = state.requests.length ? state.requests.length : "";
 
   $("classStudentList").innerHTML = state.classes.map((classItem) => {
@@ -163,25 +163,33 @@ $("announcementForm").addEventListener("submit", async (event) => {
   note(response.ok ? "公告已发布" : await detail(response)); if (response.ok) event.target.reset();
 });
 
-$("studentSelect").addEventListener("change", () => loadFiles(""));
+$("classFileSelect").addEventListener("change", () => loadFiles(""));
 $("upBtn").addEventListener("click", () => loadFiles(path.includes("/") ? path.slice(0, path.lastIndexOf("/")) : ""));
-$("mkdirBtn").addEventListener("click", async () => { const name = prompt("文件夹名称"); if (!name) return; await api(`/students/${$("studentSelect").value}/mkdir`, {method: "POST", json: {path, name}}); loadFiles(path); });
+$("mkdirBtn").addEventListener("click", async () => { const name = prompt("文件夹名称"); if (!name) return; const response=await api(`/classes/${$("classFileSelect").value}/mkdir`, {method: "POST", json: {path, name}}); note(response.ok?"文件夹已创建":await detail(response)); loadFiles(path); });
 $("uploadBtn").addEventListener("click", () => $("uploadInput").click());
-$("uploadInput").addEventListener("change", async (event) => { const form = new FormData(); form.append("path", path); [...event.target.files].forEach((file) => { form.append("files", file); form.append("relative_paths", file.name); }); await api(`/students/${$("studentSelect").value}/upload`, {method: "POST", body: form}); event.target.value = ""; loadFiles(path); });
+$("uploadInput").addEventListener("change", async (event) => { const form = new FormData(); form.append("path", path); [...event.target.files].forEach((file) => { form.append("files", file); form.append("relative_paths", file.name); }); const response=await api(`/classes/${$("classFileSelect").value}/upload`, {method: "POST", body: form}); note(response.ok?"上传完成":await detail(response)); event.target.value = ""; loadFiles(path); });
+
+function previewable(name) {
+  return /\.(png|jpe?g|gif|webp|svg|bmp|pdf|txt|md|csv|json|html?|mp3|wav|ogg|mp4|webm)$/i.test(name);
+}
 
 async function loadFiles(next) {
-  const id = $("studentSelect").value; if (!id) { $("fileRows").innerHTML = ""; return; }
-  const response = await api(`/students/${id}/files?path=${encodeURIComponent(next)}`); if (!response.ok) return;
+  const id = $("classFileSelect").value; if (!id) { $("fileRows").innerHTML = ""; return; }
+  const response = await api(`/classes/${id}/files?path=${encodeURIComponent(next)}`); if (!response.ok) return;
   const data = await response.json(); path = data.path; $("pathLabel").textContent = "/" + path;
-  $("fileRows").innerHTML = data.entries.map((item) => `<tr><td>${item.type === "folder" ? `<button class="folder" data-open="${esc(item.path)}">📁 ${esc(item.name)}</button>` : esc(item.name)}</td><td>${item.type === "folder" ? "文件夹" : "文件"}</td><td>${esc(item.content_display)}</td><td>${esc(item.size_display)}</td><td>${item.type === "file" ? `<button data-download="${esc(item.path)}">下载</button> ` : ""}<button data-rename="${esc(item.path)}" data-name="${esc(item.name)}">改名</button> <button class="danger" data-delete="${esc(item.path)}">删除</button></td></tr>`).join("");
+  const insideStudent = path.includes("/") || Boolean(path);
+  $("uploadBtn").disabled = !insideStudent; $("mkdirBtn").disabled = !insideStudent;
+  $("fileRows").innerHTML = data.entries.map((item) => { const studentRoot=item.type==="folder"&&!item.path.includes("/"); return `<tr><td>${item.type === "folder" ? `<button class="folder" data-open="${esc(item.path)}">📁 ${esc(item.name)}</button>` : esc(item.name)}</td><td>${item.type === "folder" ? "文件夹" : "文件"}</td><td>${esc(item.content_display)}</td><td>${esc(item.size_display)}</td><td><button data-download="${esc(item.path)}">下载</button> ${item.type==="file"&&previewable(item.name)?`<button data-preview="${esc(item.path)}">预览</button> `:""}${studentRoot?"":`<button data-move="${esc(item.path)}">移动</button> <button data-rename="${esc(item.path)}" data-name="${esc(item.name)}">改名</button> <button class="danger" data-delete="${esc(item.path)}">删除</button>`}</td></tr>`; }).join("");
 }
 
 $("fileRows").addEventListener("click", async (event) => {
-  const id = $("studentSelect").value; const button = event.target.closest("button"); if (!button) return;
+  const id = $("classFileSelect").value; const button = event.target.closest("button"); if (!button) return;
   if (button.dataset.open) return loadFiles(button.dataset.open);
-  if (button.dataset.rename) { const name = prompt("新名称", button.dataset.name); if (name) { await api(`/students/${id}/rename`, {method: "POST", json: {path: button.dataset.rename, name}}); loadFiles(path); } }
-  if (button.dataset.delete && confirm("删除后将进入统一回收站，确认？")) { await api(`/students/${id}/delete`, {method: "POST", json: {path: button.dataset.delete}}); loadFiles(path); }
-  if (button.dataset.download) { const response = await api(`/students/${id}/download?path=${encodeURIComponent(button.dataset.download)}`); const blob = await response.blob(); const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = button.dataset.download.split("/").pop(); link.click(); URL.revokeObjectURL(link.href); }
+  if (button.dataset.rename) { const name = prompt("新名称", button.dataset.name); if (name) { const response=await api(`/classes/${id}/rename`, {method: "POST", json: {path: button.dataset.rename, name}}); note(response.ok?"重命名完成":await detail(response)); loadFiles(path); } }
+  if (button.dataset.move) { const destination=prompt("输入同一学生下的目标目录，例如：张三/作业",path.split("/")[0]); if(destination!==null){const response=await api(`/classes/${id}/move`,{method:"POST",json:{paths:[button.dataset.move],destination}});note(response.ok?"移动完成":await detail(response));loadFiles(path);} }
+  if (button.dataset.delete && confirm("删除后将进入统一回收站，确认？")) { const response=await api(`/classes/${id}/delete-file`, {method: "POST", json: {path: button.dataset.delete}}); note(response.ok?"已移入回收站":await detail(response)); loadFiles(path); }
+  if (button.dataset.preview) { const previewWindow=window.open("","_blank"); const response=await api(`/classes/${id}/preview?path=${encodeURIComponent(button.dataset.preview)}`); if(!response.ok){previewWindow?.close();note(await detail(response));return;} const url=URL.createObjectURL(await response.blob()); if(previewWindow)previewWindow.location.href=url; else note("浏览器阻止了预览窗口"); setTimeout(()=>URL.revokeObjectURL(url),60000); }
+  if (button.dataset.download) { const response = await api(`/classes/${id}/download?path=${encodeURIComponent(button.dataset.download)}`); if(!response.ok){note(await detail(response));return;} const blob = await response.blob(); const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = button.dataset.download.split("/").pop()+(response.headers.get("Content-Type")==="application/zip"?".zip":""); link.click(); setTimeout(()=>URL.revokeObjectURL(link.href),1000); }
 });
 
 function logType(content) {

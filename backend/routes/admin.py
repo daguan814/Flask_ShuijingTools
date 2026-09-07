@@ -1,4 +1,6 @@
 from functools import wraps
+import mimetypes
+
 from flask import Blueprint, current_app, jsonify, request, send_file
 from itsdangerous import BadSignature, SignatureExpired
 
@@ -100,6 +102,115 @@ def _student(user_id):
     user=db_manager.find_user_by_id(user_id)
     if not user or user["status"]=="deleted":raise ValueError("学生不存在")
     return user
+
+def _class_students(class_id):
+    return school_service.students_for_class(class_id)
+
+def _class_path(class_id, raw_path, allow_student_root=True):
+    normalized=file_service.normalize_relative_path(raw_path)
+    if not normalized:raise ValueError("请选择学生目录")
+    first,*rest=normalized.split("/")
+    user=next((student for student in _class_students(class_id) if student["storage_key"]==first),None)
+    if not user:raise ValueError("学生目录不存在")
+    sub_path="/".join(rest)
+    if not allow_student_root and not sub_path:raise ValueError("不能在班级文件页修改学生根目录")
+    return user,sub_path,normalized
+
+@admin_bp.get("/classes/<int:class_id>/files")
+@admin_required
+def class_files(class_id):
+    relative=file_service.normalize_relative_path(request.args.get("path",""))
+    try:
+        students=_class_students(class_id)
+        if not students and not any(int(item["id"])==class_id for item in school_service.classes()):raise ValueError("班级不存在")
+        if not relative:
+            entries=[]
+            for user in students:
+                root=file_service.user_root(user)
+                entries.append(file_service._entry_info(user,root,user["storage_key"]))
+        else:
+            user,sub_path,prefix=_class_path(class_id,relative)
+            entries=file_service.list_entries(user,sub_path)
+            for item in entries:item["path"]=f"{user['storage_key']}/{item['path']}"
+    except (ValueError,FileNotFoundError) as exc:return jsonify({"detail":str(exc)}),400
+    return jsonify({"path":relative,"entries":entries})
+
+@admin_bp.post("/classes/<int:class_id>/mkdir")
+@admin_required
+def class_mkdir(class_id):
+    payload=request.get_json(silent=True) or {}
+    try:
+        user,sub_path,_=_class_path(class_id,payload.get("path",""))
+        created=file_service.create_folder(user,sub_path,payload.get("name"))
+    except Exception as exc:return jsonify({"detail":str(exc)}),400
+    return jsonify({"path":f"{user['storage_key']}/{created}"}),201
+
+@admin_bp.post("/classes/<int:class_id>/rename")
+@admin_required
+def class_rename(class_id):
+    payload=request.get_json(silent=True) or {}
+    try:
+        user,sub_path,_=_class_path(class_id,payload.get("path",""),False)
+        renamed=file_service.rename_path(user,sub_path,payload.get("name",""))
+    except Exception as exc:return jsonify({"detail":str(exc)}),400
+    return jsonify(renamed)
+
+@admin_bp.post("/classes/<int:class_id>/delete-file")
+@admin_required
+def class_delete_file(class_id):
+    try:
+        user,sub_path,_=_class_path(class_id,(request.get_json(silent=True) or {}).get("path",""),False)
+        item=recycle_service.move_to_recycle(user,sub_path)
+    except Exception as exc:return jsonify({"detail":str(exc)}),400
+    return jsonify(item)
+
+@admin_bp.get("/classes/<int:class_id>/download")
+@admin_required
+def class_download(class_id):
+    try:
+        user,sub_path,_=_class_path(class_id,request.args.get("path",""))
+        target=file_service.resolve_user_path(user,sub_path)
+        if not target.exists():raise FileNotFoundError(sub_path)
+        if target.is_file():return send_file(target,as_attachment=True,download_name=target.name)
+        archive=file_service.build_download_archive(user,[sub_path],sub_path.rsplit("/",1)[0] if "/" in sub_path else "")
+        response=send_file(archive,as_attachment=True,download_name=f"{target.name}.zip")
+        response.call_on_close(lambda:archive.unlink(missing_ok=True));return response
+    except Exception as exc:return jsonify({"detail":str(exc)}),400
+
+@admin_bp.get("/classes/<int:class_id>/preview")
+@admin_required
+def class_preview(class_id):
+    try:
+        user,sub_path,_=_class_path(class_id,request.args.get("path",""),False)
+        target=file_service.download_target(user,sub_path)
+    except Exception as exc:return jsonify({"detail":str(exc)}),400
+    return send_file(target,as_attachment=False,download_name=target.name,mimetype=mimetypes.guess_type(target.name)[0] or "application/octet-stream")
+
+@admin_bp.post("/classes/<int:class_id>/upload")
+@admin_required
+def class_upload(class_id):
+    parent=request.form.get("path","");files=request.files.getlist("files");relatives=request.form.getlist("relative_paths")
+    if not files or len(files)!=len(relatives):return jsonify({"detail":"上传参数无效"}),400
+    try:
+        user,sub_path,_=_class_path(class_id,parent)
+        uploaded=[file_service.upload_file(user,sub_path,rel,file) for file,rel in zip(files,relatives)]
+    except Exception as exc:return jsonify({"detail":str(exc)}),400
+    return jsonify({"uploaded":uploaded})
+
+@admin_bp.post("/classes/<int:class_id>/move")
+@admin_required
+def class_move(class_id):
+    payload=request.get_json(silent=True) or {};paths=payload.get("paths",[])
+    try:
+        destination_user,destination_sub,_=_class_path(class_id,payload.get("destination",""))
+        sources=[]
+        for raw in paths:
+            user,sub_path,_=_class_path(class_id,raw,False)
+            if user["id"]!=destination_user["id"]:raise ValueError("暂不支持跨学生移动文件")
+            sources.append(sub_path)
+        moved=file_service.move_paths(destination_user,sources,destination_sub)
+    except Exception as exc:return jsonify({"detail":str(exc)}),400
+    return jsonify({"moved":moved})
 
 @admin_bp.get("/students/<int:user_id>/files")
 @admin_required
