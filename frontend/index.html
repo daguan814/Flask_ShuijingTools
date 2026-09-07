@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>水镜云盘</title>
-  <link rel="stylesheet" href="/styles.css?v=20260907-school-1">
+  <link rel="stylesheet" href="/styles.css?v=20260907-school-2">
 </head>
 <body>
   <div id="loginView" class="auth-screen">
@@ -58,10 +58,6 @@
           <span>全部文件</span>
         </button>
         <div class="sidebar-heading sidebar-heading--tools">工具</div>
-        <button id="logsBtn" type="button" class="sidebar-link">
-          <span class="sidebar-icon">📒</span>
-          <span>日志</span>
-        </button>
         <button id="announcementsBtn" type="button" class="sidebar-link">
           <span class="sidebar-icon">📢</span>
           <span>班级公告</span>
@@ -128,60 +124,6 @@
           </div>
         </section>
 
-        <section id="logsView" class="page-section hidden">
-          <div class="log-simple-header">
-            <h2>操作日志</h2>
-            <button id="refreshLogsBtn" type="button" class="secondary-btn">刷新</button>
-          </div>
-          <div class="log-table-toolbar">
-            <label class="log-type-control">
-              <span>类型</span>
-              <select id="logTypeFilter">
-                <option value="all">全部</option>
-                <option value="upload">上传</option>
-                <option value="create">新建</option>
-                <option value="download">下载</option>
-                <option value="move">移动</option>
-                <option value="rename">重命名</option>
-                <option value="delete">删除</option>
-                <option value="restore">恢复</option>
-              </select>
-            </label>
-            <label class="log-date-control">
-              <span>日期</span>
-              <input id="logDateFilter" type="date">
-            </label>
-            <button id="clearLogDateBtn" type="button" class="secondary-btn">清除日期</button>
-            <label class="log-page-size-control">
-              <span>每页</span>
-              <select id="logPageSize">
-                <option value="10">10 条</option>
-                <option value="20" selected>20 条</option>
-                <option value="50">50 条</option>
-              </select>
-            </label>
-            <span id="logResultSummary" class="log-result-summary">共 0 条</span>
-          </div>
-          <div class="log-table-wrap">
-            <table class="log-table">
-              <thead>
-                <tr>
-                  <th class="log-time-col">操作时间</th>
-                  <th class="log-type-col">类型</th>
-                  <th>操作内容</th>
-                </tr>
-              </thead>
-              <tbody id="logTableBody"></tbody>
-            </table>
-            <div id="logEmpty" class="empty-message hidden">还没有符合条件的日志记录。</div>
-          </div>
-          <div class="log-pagination">
-            <button id="logPrevBtn" type="button" class="secondary-btn">上一页</button>
-            <span id="logPageSummary">第 1 / 1 页</span>
-            <button id="logNextBtn" type="button" class="secondary-btn">下一页</button>
-          </div>
-        </section>
-
         <section id="announcementsView" class="page-section hidden">
           <div class="panel-card">
             <div class="panel-card-header">
@@ -225,6 +167,6 @@
 
   <div id="toast" class="toast" role="status"></div>
 
-  <script src="/app.js?v=20260907-school-1"></script>
+  <script src="/app.js?v=20260907-school-2"></script>
 </body>
 </html>

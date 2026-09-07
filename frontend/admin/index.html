@@ -1,10 +1,67 @@
-<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>水镜云盘管理</title><link rel="stylesheet" href="/admin/admin.css?v=1"></head><body><main>
-<section id="login" class="login"><h1>管理员登录</h1><form id="loginForm"><input id="adminName" placeholder="管理员账号" required><input id="adminPassword" type="password" placeholder="管理员密码" required><button>登录</button></form><p id="loginError"></p><a href="/">返回学生云盘</a></section>
-<section id="app" class="hidden"><header><div><h1>水镜云盘管理</h1><p>班级、学生、文件、公告与汇报</p></div><a href="/">学生端</a></header><nav><button data-view="students" class="active">学生管理</button><button data-view="classes">班级管理</button><button data-view="requests">注册审核</button><button data-view="files">班级文件</button><button data-view="recycle">回收站</button><button data-view="messages">消息</button></nav><p id="notice"></p>
-<section id="students" class="view"><div class="title"><h2>学生管理</h2></div><div class="warning">删除学生是高风险操作：必须输入学生姓名确认。账号会停用，学生文件夹将移入统一回收站。</div><div class="table"><table><thead><tr><th>班级</th><th>姓名</th><th>状态</th><th>已用空间</th><th>操作</th></tr></thead><tbody id="studentRows"></tbody></table></div></section>
-<section id="classes" class="view hidden"><div class="title"><h2>班级管理</h2><button id="addClass">新增班级</button></div><div class="table"><table><thead><tr><th>班级名</th><th>目录</th><th>操作</th></tr></thead><tbody id="classRows"></tbody></table></div></section>
-<section id="requests" class="view hidden"><h2>注册审核</h2><div class="table"><table><thead><tr><th>班级</th><th>姓名</th><th>申请时间</th><th>操作</th></tr></thead><tbody id="requestRows"></tbody></table></div></section>
-<section id="files" class="view hidden"><div class="title"><h2>班级文件</h2><select id="studentSelect"></select></div><div class="file-tools"><button id="uploadBtn">上传文件</button><button id="mkdirBtn">新建文件夹</button><button id="upBtn">返回上级</button><span id="pathLabel">/</span></div><input id="uploadInput" type="file" multiple hidden><div class="table"><table><thead><tr><th>名称</th><th>类型</th><th>内容</th><th>大小</th><th>操作</th></tr></thead><tbody id="fileRows"></tbody></table></div></section>
-<section id="recycle" class="view hidden"><h2>统一回收站</h2><div class="table"><table><thead><tr><th>班级</th><th>学生</th><th>原位置</th><th>删除时间</th><th>操作</th></tr></thead><tbody id="recycleRows"></tbody></table></div></section>
-<section id="messages" class="view hidden"><div class="message-grid"><div><h2>发布班级公告</h2><form id="announcementForm"><select id="announcementClass"></select><input id="announcementTitle" placeholder="公告标题" required><textarea id="announcementContent" placeholder="公告内容" required></textarea><button>发布公告</button></form></div><div><h2>学生汇报</h2><div id="reportList"></div></div></div></section>
-</section></main><script src="/admin/admin.js?v=1"></script></body></html>
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>水镜云盘管理</title>
+  <link rel="stylesheet" href="/admin/admin.css?v=2">
+</head>
+<body><main>
+  <section id="login" class="login">
+    <h1>管理员登录</h1>
+    <form id="loginForm"><input id="adminName" placeholder="管理员账号" required><input id="adminPassword" type="password" placeholder="管理员密码" required><button>登录</button></form>
+    <p id="loginError"></p><a href="/">返回学生云盘</a>
+  </section>
+  <section id="app" class="hidden">
+    <header><div><h1>水镜云盘管理</h1><p>统一管理班级、学生、消息与文件</p></div><div class="header-actions"><a href="/">学生端</a><button id="logoutBtn">退出管理</button></div></header>
+    <nav>
+      <button data-view="people" class="active">班级与学生</button>
+      <button data-view="messages">消息中心 <span id="messageBadge" class="badge"></span></button>
+      <button data-view="files">班级文件</button>
+      <button data-view="logs">操作日志</button>
+      <button data-view="recycle">回收站</button>
+    </nav>
+    <p id="notice"></p>
+
+    <section id="people" class="view">
+      <div class="title"><div><h2>班级与学生</h2><p class="muted">按班级集中查看学生，点击班级行可以展开或收起。</p></div><button id="addClass">新增班级</button></div>
+      <div class="warning">删除学生是高风险操作：请不要随意删除。必须输入学生姓名确认，账号会停用，目录会移入统一回收站。</div>
+      <div id="classStudentList" class="class-list"></div>
+    </section>
+
+    <section id="messages" class="view hidden">
+      <div class="message-grid">
+        <div class="message-column">
+          <h2>注册审核</h2>
+          <div class="table"><table><thead><tr><th>班级</th><th>姓名</th><th>申请时间</th><th>操作</th></tr></thead><tbody id="requestRows"></tbody></table></div>
+          <h2>学生汇报</h2><div id="reportList"></div>
+        </div>
+        <div class="message-column"><h2>发布班级公告</h2><form id="announcementForm"><select id="announcementClass"></select><input id="announcementTitle" placeholder="公告标题" required><textarea id="announcementContent" placeholder="公告内容" required></textarea><button>发布公告</button></form></div>
+      </div>
+    </section>
+
+    <section id="files" class="view hidden">
+      <div class="title"><h2>班级文件</h2><select id="studentSelect"></select></div>
+      <div class="file-tools"><button id="uploadBtn">上传文件</button><button id="mkdirBtn">新建文件夹</button><button id="upBtn">返回上级</button><span id="pathLabel">/</span></div>
+      <input id="uploadInput" type="file" multiple hidden>
+      <div class="table"><table><thead><tr><th>名称</th><th>类型</th><th>内容</th><th>大小</th><th>操作</th></tr></thead><tbody id="fileRows"></tbody></table></div>
+    </section>
+
+    <section id="logs" class="view hidden">
+      <div class="title"><div><h2>全部操作日志</h2><p class="muted">统一查看所有班级学生的文件操作。</p></div><button id="refreshLogs">刷新</button></div>
+      <div class="filters">
+        <select id="logClass"><option value="">全部班级</option></select>
+        <select id="logStudent"><option value="">全部学生</option></select>
+        <select id="logAction"><option value="all">全部类型</option><option value="upload">上传</option><option value="create">新建</option><option value="download">下载</option><option value="move">移动</option><option value="rename">重命名</option><option value="delete">删除</option><option value="restore">恢复</option></select>
+        <input id="logDate" type="date"><button id="clearLogDate">清除日期</button>
+        <select id="logPageSize"><option value="20">每页 20 条</option><option value="50">每页 50 条</option><option value="100">每页 100 条</option></select>
+        <span id="logTotal" class="muted"></span>
+      </div>
+      <div class="table"><table><thead><tr><th>时间</th><th>班级</th><th>学生</th><th>类型</th><th>操作内容</th></tr></thead><tbody id="logRows"></tbody></table></div>
+      <div class="pagination"><button id="logPrev">上一页</button><span id="logPage"></span><button id="logNext">下一页</button></div>
+    </section>
+
+    <section id="recycle" class="view hidden"><h2>统一回收站</h2><div class="table"><table><thead><tr><th>班级</th><th>学生</th><th>原位置</th><th>删除时间</th><th>操作</th></tr></thead><tbody id="recycleRows"></tbody></table></div></section>
+  </section>
+</main><script src="/admin/admin.js?v=2"></script></body>
+</html>

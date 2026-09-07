@@ -5,6 +5,7 @@ from itsdangerous import BadSignature, SignatureExpired
 from ..config import ADMIN_PASSWORD, ADMIN_USERNAME
 from ..database import db_manager
 from ..file_service import file_service
+from ..log_service import log_service
 from ..recycle_service import recycle_service
 from ..school_service import school_service
 
@@ -31,6 +32,22 @@ def login():
 @admin_required
 def overview():
     return jsonify({"classes":school_service.classes(),"students":school_service.students(),"requests":school_service.requests(),"reports":school_service.reports()})
+
+@admin_bp.get("/logs")
+@admin_required
+def logs():
+    action=request.args.get("action","all"); day=request.args.get("date","").strip()
+    if action not in {"all",*log_service.ACTION_PREFIXES.keys()}:return jsonify({"detail":"日志类型无效"}),400
+    try:
+        page=max(1,int(request.args.get("page","1")))
+        page_size=min(100,max(10,int(request.args.get("page_size","20"))))
+        class_id=int(request.args.get("class_id","0") or 0)
+        user_id=int(request.args.get("user_id","0") or 0)
+        if day:
+            from datetime import datetime
+            datetime.strptime(day,"%Y-%m-%d")
+    except ValueError:return jsonify({"detail":"日志筛选参数无效"}),400
+    return jsonify(log_service.list_all_logs(None if action=="all" else action,day or None,class_id or None,user_id or None,page,page_size))
 
 @admin_bp.post("/classes")
 @admin_required

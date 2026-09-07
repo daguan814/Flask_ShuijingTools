@@ -107,10 +107,15 @@ class SchoolFlowTest(unittest.TestCase):
             ).status_code,
             204,
         )
+        self.assertEqual(self.client.get("/api/logs", headers=student_headers).status_code, 404)
 
         overview = self.client.get("/api/admin/overview", headers=headers).json
         student = next(item for item in overview["students"] if item["username"] == "测试学生")
         self.assertEqual(overview["reports"][0]["content"], "作业已完成")
+        admin_logs = self.client.get("/api/admin/logs", headers=headers).json
+        self.assertGreaterEqual(admin_logs["total"], 2)
+        self.assertEqual(admin_logs["items"][0]["class_name"], "111")
+        self.assertEqual(admin_logs["items"][0]["username"], "测试学生")
         self.assertEqual(
             self.client.get("/api/auth/announcements", headers=student_headers).json["items"][0]["title"],
             "通知",

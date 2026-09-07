@@ -23,8 +23,8 @@
 - 常见图片、文档、文本、音视频文件在线预览；
 - 单个文件使用浏览器原生下载，支持条件请求和 Range；
 - 多文件或文件夹在服务器临时生成 ZIP 后下载；
-- 自动记录按用户隔离的文件操作日志，支持按日期与操作类型组合筛选、结果统计和分页；
-- 日志采用简洁表格布局，滚动时固定表头；
+- 文件操作日志统一在管理后台查看，可按班级、学生、日期与操作类型组合筛选，并支持统计和分页；
+- 班级与学生在同一页面按班级折叠展示，注册审核、学生汇报和公告发布集中在消息中心；
 - 同一浏览器连续登录失败5次后锁定5小时；
 - 显示用户已用空间和服务器磁盘容量。
 
@@ -161,11 +161,11 @@ python3 -m http.server 5173 -d frontend
 | `GET` | `/api/files/preview?path=` | API 内联预览 |
 | `POST` | `/api/files/preview/start` | 创建预览会话 |
 | `GET` | `/preview/<path>` | 使用预览会话打开文件 |
-| `GET` | `/api/logs` | 查询当前用户的文件操作日志，可使用 `date`、`action`、`page`、`page_size` 筛选和分页 |
 | `GET` | `/api/auth/announcements` | 当前班级公告 |
 | `POST` | `/api/auth/reports` | 向管理员提交汇报 |
 | `POST` | `/api/admin/login` | 管理员登录 |
 | `GET` | `/api/admin/overview` | 班级、学生、申请和汇报总览 |
+| `GET` | `/api/admin/logs` | 管理员统一查询全部学生操作日志 |
 | `POST/PATCH/DELETE` | `/api/admin/classes...` | 管理班级及联动目录 |
 | `POST` | `/api/admin/requests/<id>/review` | 审核注册申请 |
 | `PATCH/DELETE` | `/api/admin/students/<id>` | 管理学生及联动目录 |
