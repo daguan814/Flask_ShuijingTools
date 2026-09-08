@@ -1054,6 +1054,10 @@ body {
 .sidebar {
   border-right-color: rgba(193, 203, 232, .72);
   background: linear-gradient(180deg, rgba(255,255,255,.72), rgba(241,244,255,.78));
+  position: sticky;
+  top: 64px;
+  height: calc(100vh - 64px);
+  overflow-y: auto;
 }
 .sidebar-link { transition: .2s ease; }
 .sidebar-link.active,
@@ -1062,6 +1066,11 @@ body {
   background: linear-gradient(100deg, rgba(105,91,223,.15), rgba(122,176,255,.11));
   box-shadow: inset 0 0 0 1px rgba(118,104,230,.08);
 }
+.sidebar-heading--notice { margin-top: 25px; margin-bottom: 9px; }
+.sidebar-announcement { margin: 0 7px; padding: 11px 12px; border: 1px solid rgba(174,184,227,.62); border-radius: 12px; background: linear-gradient(145deg,rgba(255,255,255,.92),rgba(238,239,255,.84)); box-shadow: 0 8px 18px rgba(71,74,150,.07); }
+.sidebar-announcement strong { display: block; color: #4f49bd; font-size: .84rem; }
+.sidebar-announcement p { margin: 6px 0 0; color: #566482; font-size: .79rem; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
+.sidebar-announcement--empty { color: var(--muted); font-size: .8rem; }
 .main-content { padding: 28px 32px 52px; }
 .files-sticky-controls {
   margin: -10px -14px 20px;
@@ -1121,6 +1130,7 @@ body {
 .toast.toast--show { opacity: 1; transform: translateY(0); }
 
 @media (max-width: 760px) {
+  .sidebar { position: static; height: auto; overflow: visible; }
   .main-content { padding: 16px 14px 36px; }
   .files-sticky-controls { margin: -6px -6px 14px; padding: 6px; }
   .file-table { min-width: 660px; }

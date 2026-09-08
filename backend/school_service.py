@@ -169,16 +169,34 @@ class SchoolService:
             cursor.close(); conn.close()
 
     def announcements_for(self,class_id):
-        ph=db_manager.placeholder(); return self.rows(f"SELECT id,title,content,created_at FROM announcements WHERE class_id={ph} ORDER BY id DESC",(class_id,))
+        ph=db_manager.placeholder(); return self.rows(f"SELECT id,title,content,created_at FROM announcements WHERE class_id={ph} ORDER BY id DESC LIMIT 1",(class_id,))
 
     def announcements(self):
-        return self.rows("""SELECT a.id,a.title,a.content,a.created_at,c.name AS class_name
+        return self.rows("""SELECT a.id,a.class_id,a.title,a.content,a.created_at,c.name AS class_name
             FROM announcements a JOIN school_classes c ON c.id=a.class_id ORDER BY a.id DESC""")
 
     def create_announcement(self,class_id,title,content):
         if not str(title).strip() or not str(content).strip(): raise ValueError("标题和内容不能为空")
         ph=db_manager.placeholder(); conn=db_manager.get_connection(); cursor=db_manager.cursor(conn)
         cursor.execute(f"INSERT INTO announcements(class_id,title,content) VALUES({ph},{ph},{ph})",(class_id,str(title).strip(),str(content).strip())); conn.commit(); cursor.close(); conn.close()
+
+    def replace_announcements(self, class_ids, title, content):
+        if not isinstance(class_ids, list) or not class_ids: raise ValueError("请至少选择一个用户组")
+        title, content = str(title).strip(), str(content).strip()
+        if not title or not content: raise ValueError("标题和内容不能为空")
+        ids = sorted({int(item) for item in class_ids})
+        ph=db_manager.placeholder(); conn=db_manager.get_connection(); cursor=db_manager.cursor(conn)
+        try:
+            marks=",".join([ph]*len(ids))
+            cursor.execute(f"SELECT COUNT(*) AS total FROM school_classes WHERE id IN ({marks})",tuple(ids))
+            if cursor.fetchone()["total"] != len(ids): raise ValueError("用户组不存在")
+            cursor.execute(f"DELETE FROM announcements WHERE class_id IN ({marks})",tuple(ids))
+            cursor.executemany(f"INSERT INTO announcements(class_id,title,content) VALUES({ph},{ph},{ph})",[(item,title,content) for item in ids])
+            conn.commit()
+        except Exception:
+            conn.rollback(); raise
+        finally:
+            cursor.close(); conn.close()
 
     def add_report(self,user_id,content):
         content=str(content).strip()

@@ -10,6 +10,7 @@ Vue.createApp({
   }; },
   computed: {
     pathParts() { return this.path ? this.path.split("/") : []; },
+    currentAnnouncement() { return this.announcements[0] || null; },
     allSelected() { return this.entries.length > 0 && this.selected.length === this.entries.length; },
     sortedEntries() { const {field, ascending} = this.sort; const factor = ascending ? 1 : -1; return [...this.entries].sort((a,b) => { if (a.type !== b.type) return a.type === "folder" ? -1 : 1; let x = field === "modified" ? Date.parse(a.modified_at || 0) : field === "size" ? Number(a.size || a.total_size || 0) : String(a.name).localeCompare(String(b.name), "zh-CN", {numeric:true}); return x * factor; }); },
   },
@@ -21,7 +22,7 @@ Vue.createApp({
     async loadGroups() { try { const r=await fetch(apiBase+"/api/auth/classes"); this.groups=(await r.json()).classes || []; } catch (_) { this.authError="无法连接服务，请稍后重试。"; } },
     async login() { this.authError=""; this.busy=true; try { const r=await this.request("/auth/login", {method:"POST",json:{class_id:Number(this.loginForm.groupId),username:this.loginForm.username,password:this.loginForm.password}}); if(!r.ok){this.authError=await this.jsonError(r,"登录失败。");return;} const data=await r.json(); this.token=data.token; this.user=data.user; localStorage.setItem("storage_token",this.token); await this.restore(); } catch (_) { this.authError="无法连接服务，请稍后重试。"; } finally {this.busy=false;} },
     async register() { this.authError=""; this.busy=true; try { const r=await this.request("/auth/register", {method:"POST",json:{class_id:Number(this.registerForm.groupId),username:this.registerForm.username,password:this.registerForm.password,confirm_password:this.registerForm.confirm}}); this.authError=await this.jsonError(r,r.ok?"注册申请已提交，请等待管理员审核。":"提交失败。"); if(r.ok){this.registerForm={groupId:"",username:"",password:"",confirm:""};} } catch (_) {this.authError="无法连接服务，请稍后重试。";} finally {this.busy=false;} },
-    async restore() { const r=await this.request("/auth/me"); if(!r.ok)return; this.user=(await r.json()).user; await this.openFiles(""); },
+    async restore() { const r=await this.request("/auth/me"); if(!r.ok)return; this.user=(await r.json()).user; await Promise.all([this.openFiles(""), this.loadAnnouncements()]); },
     async logout(call=true) { if(call && this.token) await this.request("/auth/logout",{method:"POST"}); this.token="";this.user={};this.entries=[];this.selected=[];localStorage.removeItem("storage_token"); },
     async openFiles(path) { this.view="files";this.path=path;this.selected=[];await this.loadFiles(); },
     async loadFiles() { try { const r=await this.request("/files?path="+encodeURIComponent(this.path)); if(!r.ok){this.notify(await this.jsonError(r,"目录读取失败。"));return;} const data=await r.json();this.path=data.path||"";this.entries=data.entries||[];this.selected=[]; }catch(_){this.notify("目录读取失败。");} },
@@ -36,7 +37,7 @@ Vue.createApp({
     async move(){const destination=window.prompt("请输入目标文件夹路径（例如：资料/作业；根目录请填写 /）：",this.path||"/");if(destination===null)return;const dest=destination.trim()==="/"?"":destination.trim();const r=await this.request("/files/move",{method:"POST",json:{paths:this.selected,destination:dest}});if(!r.ok)return this.notify(await this.jsonError(r,"移动失败。"));this.notify("移动完成。");await this.loadFiles();},
     async remove(){if(!window.confirm(`确认删除选中的 ${this.selected.length} 项吗？文件将进入回收站。`))return;const r=await this.request("/files/batch-delete",{method:"POST",json:{paths:this.selected}});if(!r.ok)return this.notify(await this.jsonError(r,"删除失败。"));this.notify("已移入回收站。");await this.loadFiles();await this.refreshUser();},
     async refreshUser(){const r=await this.request("/auth/me");if(r.ok)this.user=(await r.json()).user;},
-    async openAnnouncements(){this.view="announcements";const r=await this.request("/auth/announcements");if(r.ok)this.announcements=(await r.json()).items||[];},
+    async loadAnnouncements(){const r=await this.request("/auth/announcements");if(r.ok)this.announcements=(await r.json()).items||[];},
     async submitReport(){if(!this.report)return;this.busy=true;const r=await this.request("/auth/reports",{method:"POST",json:{content:this.report}});this.busy=false;if(!r.ok)return this.notify(await this.jsonError(r,"提交失败。"));this.report="";this.notify("报告已提交给管理员。");},
   },
 }).mount("#app");

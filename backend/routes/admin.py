@@ -97,7 +97,7 @@ def update_student(user_id):
 @admin_required
 def delete_student(user_id):
     payload=request.get_json(silent=True) or {}
-    if payload.get("acknowledge")!="我确认删除学生并将文件移入回收站":return jsonify({"detail":"请确认删除警告"}),400
+    if payload.get("acknowledge")!="我确认删除用户并将文件移入回收站":return jsonify({"detail":"请确认删除操作"}),400
     try:school_service.delete_student(user_id,str(payload.get("username","")))
     except ValueError as exc:return jsonify({"detail":str(exc)}),400
     return "",204
@@ -329,7 +329,7 @@ def move(user_id):
 @admin_required
 def announcement():
     payload=request.get_json(silent=True) or {}
-    try:school_service.create_announcement(payload.get("class_id"),payload.get("title"),payload.get("content"))
+    try:school_service.replace_announcements(payload.get("class_ids") or [payload.get("class_id")],payload.get("title"),payload.get("content"))
     except ValueError as exc:return jsonify({"detail":str(exc)}),400
     return "",204
 
