@@ -20,7 +20,7 @@ class SchoolService:
     def register(self,class_id,username,password):
         username=file_service.normalize_username(username)
         if len(password)<6: raise ValueError("密码至少需要6位")
-        ph=db_manager.placeholder(); conn=db_manager.get_connection(); cursor=db_manager.cursor(conn)
+        ph=db_manager.placeholder(); conn=db_manager.get_connection(); cursor=db_manager.cursor(conn, dictionary=True)
         cursor.execute(f"SELECT id FROM school_classes WHERE id={ph}",(class_id,))
         if not cursor.fetchone(): cursor.close(); conn.close(); raise ValueError("班级不存在")
         cursor.execute(f"SELECT id FROM storage_users WHERE username={ph}",(username,))
@@ -185,7 +185,7 @@ class SchoolService:
         title, content = str(title).strip(), str(content).strip()
         if not title or not content: raise ValueError("标题和内容不能为空")
         ids = sorted({int(item) for item in class_ids})
-        ph=db_manager.placeholder(); conn=db_manager.get_connection(); cursor=db_manager.cursor(conn)
+        ph=db_manager.placeholder(); conn=db_manager.get_connection(); cursor=db_manager.cursor(conn, dictionary=True)
         try:
             marks=",".join([ph]*len(ids))
             cursor.execute(f"SELECT COUNT(*) AS total FROM school_classes WHERE id IN ({marks})",tuple(ids))
