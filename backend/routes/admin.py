@@ -3,6 +3,7 @@ import mimetypes
 import tempfile
 import zipfile
 from pathlib import Path
+from urllib.parse import quote
 
 from flask import Blueprint, current_app, jsonify, request, send_file
 from itsdangerous import BadSignature, SignatureExpired
@@ -203,14 +204,21 @@ def class_batch_download(class_id):
     except Exception as exc:
         archive_path.unlink(missing_ok=True);return jsonify({"detail":str(exc)}),400
 
-@admin_bp.get("/classes/<int:class_id>/preview")
+@admin_bp.post("/classes/<int:class_id>/preview/start")
 @admin_required
-def class_preview(class_id):
+def start_class_preview(class_id):
     try:
         user,sub_path,_=_class_path(class_id,request.args.get("path",""),False)
         target=file_service.download_target(user,sub_path)
     except Exception as exc:return jsonify({"detail":str(exc)}),400
-    return send_file(target,as_attachment=False,download_name=target.name,mimetype=mimetypes.guess_type(target.name)[0] or "application/octet-stream")
+    parent=sub_path.rsplit("/",1)[0] if "/" in sub_path else ""
+    response=jsonify({"url":f"/preview/{quote(target.name)}"})
+    response.set_cookie(
+        "preview_session",
+        current_app.preview_serializer.dumps({"user_id":int(user["id"]),"root":parent}),
+        max_age=3600,path="/preview",httponly=True,samesite="Lax",secure=request.is_secure,
+    )
+    return response
 
 @admin_bp.post("/classes/<int:class_id>/upload")
 @admin_required

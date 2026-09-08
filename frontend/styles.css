@@ -1036,6 +1036,98 @@ button {
   transform: translateY(0);
 }
 
+/* V2.1 visual refresh: calm blue-violet gradients and a more legible file desk. */
+body {
+  background:
+    radial-gradient(900px circle at 92% -15%, rgba(147, 197, 253, .38), transparent 58%),
+    radial-gradient(760px circle at -10% 88%, rgba(196, 181, 253, .26), transparent 60%),
+    linear-gradient(145deg, #f8faff 0%, #f3f5ff 48%, #f8f5ff 100%);
+}
+.topbar {
+  border-bottom-color: rgba(191, 201, 231, .65);
+  background: linear-gradient(100deg, rgba(255,255,255,.92), rgba(245,247,255,.86));
+  box-shadow: 0 3px 18px rgba(61, 75, 138, .06);
+}
+.topbar-brand { color: #27365f; }
+.topbar-brand::before { content: "◈"; margin-right: 9px; color: #7166e8; }
+.storage-body { background: transparent; }
+.sidebar {
+  border-right-color: rgba(193, 203, 232, .72);
+  background: linear-gradient(180deg, rgba(255,255,255,.72), rgba(241,244,255,.78));
+}
+.sidebar-link { transition: .2s ease; }
+.sidebar-link.active,
+.sidebar-link:hover {
+  color: #5149c9;
+  background: linear-gradient(100deg, rgba(105,91,223,.15), rgba(122,176,255,.11));
+  box-shadow: inset 0 0 0 1px rgba(118,104,230,.08);
+}
+.main-content { padding: 28px 32px 52px; }
+.files-sticky-controls {
+  margin: -10px -14px 20px;
+  padding: 10px 14px 14px;
+  background: linear-gradient(180deg, rgba(246,248,255,.96), rgba(246,248,255,.8));
+}
+.breadcrumb-item {
+  padding: 6px 10px;
+  border: 1px solid rgba(177,187,227,.45);
+  border-radius: 9px;
+  background: rgba(255,255,255,.72);
+  color: #5149c9;
+  font-weight: 750;
+}
+.breadcrumb-item:hover { background: #fff; box-shadow: 0 5px 14px rgba(82,73,201,.12); }
+.toolbar-actions .secondary-btn:first-child,
+.primary-btn { background: linear-gradient(120deg, #5b57d8, #7c58d8); color: #fff; border-color: transparent; box-shadow: 0 8px 18px rgba(90,79,209,.22); }
+.toolbar-actions .secondary-btn:first-child:hover,
+.primary-btn:hover { background: linear-gradient(120deg, #4d48bf, #7046c3); transform: translateY(-1px); }
+.secondary-btn,.icon-only-btn { background: rgba(255,255,255,.84); border-color: rgba(191,201,231,.7); transition: .18s ease; }
+.batch-toolbar,.file-table-wrap,.panel-card,.report-form,.message-card { border-color: rgba(191,201,231,.65); box-shadow: 0 12px 30px rgba(58,70,133,.08); }
+.batch-toolbar { background: linear-gradient(100deg, rgba(255,255,255,.93), rgba(247,247,255,.9)); }
+.file-table-wrap { background: rgba(255,255,255,.88); backdrop-filter: blur(12px); }
+.file-table th { background: linear-gradient(100deg, #f8f9ff, #f4f5ff); color: #637096; }
+.file-table th.sortable { cursor: pointer; user-select: none; }
+.file-table tbody tr { transition: background .16s ease, transform .16s ease; }
+.file-table tbody tr:hover td { background: linear-gradient(90deg, rgba(237,240,255,.82), rgba(249,247,255,.78)); }
+.file-entry-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 11px;
+  max-width: 100%;
+  padding: 5px 8px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: #253457;
+  font-weight: 720;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.file-entry-btn:hover { color: #564bc8; background: rgba(102,91,219,.08); }
+.entry-emoji {
+  display: inline-grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 11px;
+  background: linear-gradient(145deg, #fff7df, #fff1c7);
+  box-shadow: inset 0 0 0 1px rgba(226,169,65,.13);
+  font-size: 20px;
+}
+.file-table tr:not(:has(.entry-emoji:first-child)) .entry-emoji { background: linear-gradient(145deg,#edf2ff,#e8e9ff); }
+.content-col { color: #7581a3; }
+.toast.toast--show { opacity: 1; transform: translateY(0); }
+
+@media (max-width: 760px) {
+  .main-content { padding: 16px 14px 36px; }
+  .files-sticky-controls { margin: -6px -6px 14px; padding: 6px; }
+  .file-table { min-width: 660px; }
+  .file-table-wrap { overflow-x: auto; }
+  .toolbar-actions .secondary-btn:first-child { width: auto; }
+}
+
 @media (max-width: 760px) {
   .topbar {
     min-height: 60px;

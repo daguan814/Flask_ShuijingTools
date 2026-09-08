@@ -99,8 +99,8 @@ class SchoolFlowTest(unittest.TestCase):
         )
         self.assertIn("作业.txt", [item["name"] for item in response.json["entries"]])
         self.assertEqual(
-            self.client.get(
-                f"/api/admin/classes/{class_111['id']}/preview?path=测试学生/作业.txt",
+            self.client.post(
+                f"/api/admin/classes/{class_111['id']}/preview/start?path=测试学生/作业.txt",
                 headers=headers,
             ).status_code,
             200,
