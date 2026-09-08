@@ -38,8 +38,10 @@ class SchoolFlowTest(unittest.TestCase):
         return {"Authorization": f"Bearer {response.json['token']}"}
 
     def test_registration_files_messages_and_admin_restore(self):
-        classes = self.client.get("/api/auth/classes").json["classes"]
-        class_111 = next(item for item in classes if item["name"] == "111")
+        headers = self.admin_headers()
+        response = self.client.post("/api/admin/classes", headers=headers, json={"name": "测试用户组"})
+        self.assertEqual(response.status_code, 201)
+        class_111 = {"id": response.json["id"], "name": "测试用户组"}
 
         response = self.client.post(
             "/api/auth/register",
@@ -52,7 +54,6 @@ class SchoolFlowTest(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 201)
 
-        headers = self.admin_headers()
         overview = self.client.get("/api/admin/overview", headers=headers).json
         request_id = next(
             item["id"] for item in overview["requests"] if item["username"] == "测试学生"
@@ -74,7 +75,7 @@ class SchoolFlowTest(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 200)
         student_headers = {"Authorization": f"Bearer {response.json['token']}"}
-        self.assertTrue((_ROOT / "storage" / "111" / "测试学生").is_dir())
+        self.assertTrue((_ROOT / "storage" / "测试用户组" / "测试学生").is_dir())
 
         response = self.client.post(
             "/api/files/upload",
@@ -154,7 +155,7 @@ class SchoolFlowTest(unittest.TestCase):
         self.assertEqual(overview["reports"][0]["content"], "作业已完成")
         admin_logs = self.client.get("/api/admin/logs", headers=headers).json
         self.assertGreaterEqual(admin_logs["total"], 2)
-        self.assertEqual(admin_logs["items"][0]["class_name"], "111")
+        self.assertEqual(admin_logs["items"][0]["class_name"], "测试用户组")
         self.assertEqual(admin_logs["items"][0]["username"], "测试学生")
         self.assertEqual(
             self.client.get("/api/auth/announcements", headers=student_headers).json["items"][0]["title"],
@@ -168,7 +169,7 @@ class SchoolFlowTest(unittest.TestCase):
             json={"user_id": student["id"]},
         )
         self.assertEqual(response.status_code, 200)
-        self.assertTrue((_ROOT / "storage" / "111" / "测试学生" / "作业.txt").is_file())
+        self.assertTrue((_ROOT / "storage" / "测试用户组" / "测试学生" / "作业.txt").is_file())
 
         response = self.client.post(
             "/api/admin/classes", headers=headers, json={"name": "二班"}
@@ -181,7 +182,7 @@ class SchoolFlowTest(unittest.TestCase):
             json={"username": "新姓名", "class_id": class_id},
         )
         self.assertEqual(response.status_code, 204)
-        self.assertFalse((_ROOT / "storage" / "111" / "测试学生").exists())
+        self.assertFalse((_ROOT / "storage" / "测试用户组" / "测试学生").exists())
         self.assertTrue((_ROOT / "storage" / "二班" / "新姓名" / "作业.txt").is_file())
         self.assertEqual(self.client.get("/api/auth/me", headers=student_headers).status_code, 401)
 

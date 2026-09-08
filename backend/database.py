@@ -249,11 +249,14 @@ class DatabaseManager:
 
         ph = self.placeholder()
         cursor.execute(f"SELECT id FROM school_classes WHERE name={ph}", ("111",))
-        class_id = cursor.fetchone()[0]
-        cursor.execute(
-            f"UPDATE storage_users SET class_id={ph}, status='password_required' WHERE class_id IS NULL",
-            (class_id,),
-        )
+        legacy_group = cursor.fetchone()
+        # 仅在历史默认组仍存在时迁移未归组的旧账号；不能再自动重建 111。
+        if legacy_group:
+            class_id = legacy_group[0]
+            cursor.execute(
+                f"UPDATE storage_users SET class_id={ph}, status='password_required' WHERE class_id IS NULL",
+                (class_id,),
+            )
 
         conn.commit()
         cursor.close()
@@ -320,7 +323,6 @@ class DatabaseManager:
         for name,definition in definitions.items():
             if name not in columns:
                 cursor.execute(f"ALTER TABLE storage_users ADD COLUMN {name} {definition}")
-        cursor.execute(insert,("111","111"))
 
     def find_user_by_username(self, username: str):
         if not username:
