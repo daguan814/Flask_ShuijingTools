@@ -92,12 +92,14 @@ def dashboard_stats():
             total_files += len([f for f in filenames if f != ".DS_Store" and not (Path(dirpath) / f).is_symlink()])
     total_storage = student_storage + admin_storage
     today = datetime.now().date()
-    today_active_users = log_service.active_user_count(today.isoformat())
     activity = []
     for i in range(6, -1, -1):
         day = (today - timedelta(days=i)).isoformat()
         log_total = log_service.list_all_logs(day=day, page_size=1)["total"]
         activity.append({"date": day, "operations": log_total})
+    # Keep the dashboard card consistent with the activity chart: both show
+    # today's total file-operation volume rather than a deduplicated user count.
+    today_active_users = activity[-1]["operations"] if activity else 0
     return jsonify({
         "totals": {
             "classes": len(classes),

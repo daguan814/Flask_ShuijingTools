@@ -142,20 +142,5 @@ class LogService:
         conn.close()
         return log_id
 
-    def active_user_count(self, day: str) -> int:
-        """Count distinct users who performed a file operation on one day."""
-        start = datetime.strptime(day, "%Y-%m-%d")
-        ph = db_manager.placeholder()
-        conn = db_manager.get_connection()
-        cursor = db_manager.cursor(conn)
-        cursor.execute(
-            f"SELECT COUNT(DISTINCT user_id) FROM user_logs "
-            f"WHERE created_at >= {ph} AND created_at < {ph}",
-            (start, start + timedelta(days=1)),
-        )
-        total = int(cursor.fetchone()[0])
-        cursor.close()
-        conn.close()
-        return total
 
 log_service = LogService()
