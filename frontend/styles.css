@@ -457,7 +457,8 @@ button {
 .file-table {
   width: 100%;
   border-collapse: collapse;
-  table-layout: fixed;
+  /* Keep each directory entry as one continuous row, rather than card-like cells. */
+  table-layout: auto;
 }
 
 .file-table th {
@@ -469,6 +470,8 @@ button {
   font-weight: 700;
   letter-spacing: 0.04em;
   text-align: left;
+  border-left: 0;
+  border-right: 0;
 }
 
 .file-table td {
@@ -477,6 +480,9 @@ button {
   color: var(--text);
   font-size: 0.92rem;
   vertical-align: middle;
+  border-left: 0;
+  border-right: 0;
+  background: transparent;
 }
 
 .select-col {
@@ -1097,7 +1103,8 @@ body {
 .file-table th { background: linear-gradient(100deg, #f8f9ff, #f4f5ff); color: #637096; }
 .file-table th.sortable { cursor: pointer; user-select: none; }
 .file-table tbody tr { transition: background .16s ease, transform .16s ease; }
-.file-table tbody tr:hover td { background: linear-gradient(90deg, rgba(237,240,255,.82), rgba(249,247,255,.78)); }
+.file-table tbody tr:hover { background: rgba(237,240,255,.72); }
+.file-table tbody tr:hover td { background: transparent; }
 .file-entry-btn {
   display: inline-flex;
   align-items: center;
