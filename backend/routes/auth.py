@@ -159,7 +159,7 @@ def shared_preview_start(share_id):
         return jsonify({"url": preview_service.preview_url(current_app, {
             "kind": "shared", "share_id": share_id,
             "class_id": int(g.current_user["class_id"]),
-        })})
+        }, target.name)})
     except Exception as exc:
         return jsonify({"detail": str(exc)}), 404
 

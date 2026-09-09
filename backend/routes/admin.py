@@ -330,7 +330,7 @@ def personal_preview_start():
             raise ValueError("文件夹不能直接预览")
         return jsonify({"url": preview_service.preview_url(current_app, {
             "kind": "admin", "admin_id": int(g.current_admin["id"]), "path": path,
-        })})
+        }, target.name)})
     except Exception as exc:
         return jsonify({"detail": str(exc)}), 400
 
@@ -445,7 +445,7 @@ def start_class_preview(class_id):
     except Exception as exc:return jsonify({"detail":str(exc)}),400
     return jsonify({"url":preview_service.preview_url(current_app,{
         "kind":"student","user_id":int(user["id"]),"path":sub_path,
-    })})
+    },target.name)})
 
 @admin_bp.post("/classes/<int:class_id>/upload")
 @admin_required

@@ -156,7 +156,7 @@ def start_preview():
     return jsonify({"url": preview_service.preview_url(current_app, {
         "kind": "student", "user_id": int(g.current_user["id"]),
         "path": file_service.normalize_relative_path(relative_path),
-    })})
+    }, target.name)})
 
 
 @files_bp.route("/delete", methods=["POST"])

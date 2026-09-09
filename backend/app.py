@@ -98,8 +98,8 @@ def create_app():
     def health():
         return jsonify({"ok": True})
 
-    @app.route("/api/preview-source/<ticket>", methods=["GET"])
-    def serve_kk_preview_source(ticket: str):
+    @app.route("/api/preview-source/<ticket>/<path:filename>", methods=["GET"])
+    def serve_kk_preview_source(ticket: str, filename: str):
         """Serve exactly one file to kkFileView using a short-lived ticket."""
         try:
             payload = app.kk_preview_serializer.loads(ticket, max_age=KK_PREVIEW_MAX_AGE)
