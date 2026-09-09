@@ -288,6 +288,18 @@ class DatabaseManager:
             if user:
                 file_service.ensure_user_root(user)
 
+        # 管理员个人文件使用独立目录。启动时为既有管理员补齐目录，
+        # 不依赖用户第一次打开页面或第一次上传时才创建。
+        from .admin_file_service import admin_file_service
+        conn = self.get_connection()
+        cursor = self.cursor(conn, dictionary=True)
+        cursor.execute("SELECT id FROM admin_users")
+        admin_rows = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        for admin in admin_rows:
+            admin_file_service.root(admin["id"])
+
     def _columns(self, cursor, table):
         if self.is_sqlite:
             cursor.execute(f"PRAGMA table_info({table})")

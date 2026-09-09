@@ -110,6 +110,7 @@ def create_admin():
         admin_id = admin_service.create(payload.get("username"), payload.get("password"))
     except ValueError as exc:
         return jsonify({"detail":str(exc)}),400
+    admin_file_service.root(admin_id)
     return jsonify({"id":admin_id}),201
 
 @admin_bp.patch("/admins/<int:admin_id>")
@@ -215,7 +216,12 @@ def clear_login_attempts():
 def personal_files():
     try:
         result = admin_file_service.list_entries(g.current_admin["id"], request.args.get("path", ""))
-        shares = admin_file_service.shares_for_admin(g.current_admin["id"])
+        # 共享状态仅是附加信息，不能因为记录表异常而阻塞管理员读取或上传文件。
+        try:
+            shares = admin_file_service.shares_for_admin(g.current_admin["id"])
+        except Exception:
+            current_app.logger.exception("Failed to load administrator file shares")
+            shares = {}
         for item in result["entries"]:
             item["shared_groups"] = shares.get(item["path"], "")
         return jsonify(result)
