@@ -382,7 +382,7 @@ class DatabaseManager:
             cursor.execute("""CREATE TABLE IF NOT EXISTS admin_file_shares (
                 id BIGINT AUTO_INCREMENT PRIMARY KEY,
                 admin_id INT NOT NULL,
-                relative_path VARCHAR(2048) NOT NULL,
+                relative_path VARCHAR(512) NOT NULL,
                 class_id INT NOT NULL,
                 created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE KEY uq_admin_file_share (admin_id, relative_path, class_id),
