@@ -2,13 +2,17 @@ import hashlib
 import re
 import uuid
 
-from flask import Blueprint, g, jsonify, make_response, request
+from flask import Blueprint, g, jsonify, make_response, request, send_file
 
 from ..config import SECRET_KEY
 
 from ..auth_service import auth_service
 from ..file_service import file_service
 from ..school_service import school_service
+from ..admin_file_service import admin_file_service
+from pathlib import Path
+import tempfile
+import zipfile
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/api/auth")
 
@@ -120,6 +124,29 @@ def register():
 @auth_bp.get("/announcements")
 def announcements():
     return jsonify({"items":school_service.announcements_for(g.current_user["class_id"])})
+
+
+@auth_bp.get("/shared-files")
+def shared_files():
+    return jsonify({"items": admin_file_service.shared_for_user(g.current_user["class_id"])})
+
+
+@auth_bp.get("/shared-files/<int:share_id>/download")
+def shared_download(share_id):
+    try:
+        target = admin_file_service.shared_target(share_id, g.current_user["class_id"])
+        if target.is_file():
+            return send_file(target, as_attachment=True, download_name=target.name)
+        temp = tempfile.NamedTemporaryFile(prefix="shuijing-shared-", suffix=".zip", delete=False)
+        archive = Path(temp.name); temp.close()
+        with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED) as output:
+            for child in target.rglob("*"):
+                if child.is_file() and not child.is_symlink():
+                    output.write(child, arcname=str(Path(target.name) / child.relative_to(target)))
+        response = send_file(archive, as_attachment=True, download_name=f"{target.name}.zip")
+        response.call_on_close(lambda: archive.unlink(missing_ok=True)); return response
+    except Exception as exc:
+        return jsonify({"detail": str(exc)}), 404
 
 
 @auth_bp.post("/reports")

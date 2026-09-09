@@ -35,7 +35,10 @@ class SchoolService:
         rows=self.rows("""SELECT u.id,u.username,u.storage_key,u.status,u.created_at,u.class_id,c.name AS class_name,c.storage_key AS class_storage_key
             FROM storage_users u JOIN school_classes c ON c.id=u.class_id WHERE u.status!='deleted' ORDER BY c.name,u.username""")
         for row in rows:
-            usage=file_service.storage_usage(row); row["used_display"]=usage["used_display"]
+            usage=file_service.storage_usage(row)
+            row["used"]=usage["used"]
+            row["used_display"]=usage["used_display"]
+            row["disk_total_display"]=usage["disk_total_display"]
         return rows
 
     def students_for_class(self, class_id):

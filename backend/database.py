@@ -232,6 +232,7 @@ class DatabaseManager:
 
         self._init_school_schema(cursor)
         self._init_admin_schema(cursor)
+        self._init_admin_file_schema(cursor)
 
         # 从原来的环境变量管理员平滑迁移：仅在管理员不存在时创建，绝不覆盖
         # 已在数据库中修改过的管理员密码或状态。
@@ -359,6 +360,33 @@ class DatabaseManager:
                 status VARCHAR(16) NOT NULL DEFAULT 'active',
                 created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci""")
+
+    def _init_admin_file_schema(self, cursor):
+        """Share records for files owned by an administrator.
+
+        Files themselves stay in the dedicated administrator storage directory; this
+        table only controls which user groups can download each item.
+        """
+        if self.is_sqlite:
+            cursor.execute("""CREATE TABLE IF NOT EXISTS admin_file_shares (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                admin_id INTEGER NOT NULL,
+                relative_path TEXT NOT NULL,
+                class_id INTEGER NOT NULL,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(admin_id, relative_path, class_id)
+            )""")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_admin_file_shares_class ON admin_file_shares(class_id)")
+        else:
+            cursor.execute("""CREATE TABLE IF NOT EXISTS admin_file_shares (
+                id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                admin_id INT NOT NULL,
+                relative_path VARCHAR(2048) NOT NULL,
+                class_id INT NOT NULL,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE KEY uq_admin_file_share (admin_id, relative_path, class_id),
+                INDEX idx_admin_file_shares_class (class_id)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci""")
 
     def find_user_by_username(self, username: str):

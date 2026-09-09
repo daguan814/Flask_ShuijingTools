@@ -1,5 +1,6 @@
 from functools import wraps
 import mimetypes
+import os
 import tempfile
 import zipfile
 from pathlib import Path
@@ -9,9 +10,10 @@ from flask import Blueprint, current_app, g, jsonify, request, send_file
 from itsdangerous import BadSignature, SignatureExpired
 
 from ..admin_service import admin_service
+from ..admin_file_service import admin_file_service
 from ..auth_service import auth_service
 from ..database import db_manager
-from ..file_service import file_service
+from ..file_service import file_service, format_size
 from ..log_service import log_service
 from ..recycle_service import recycle_service
 from ..school_service import school_service
@@ -45,6 +47,60 @@ def login():
 @admin_required
 def overview():
     return jsonify({"admins":admin_service.list(),"classes":school_service.classes(),"students":school_service.students(),"requests":school_service.requests(),"reports":school_service.reports(),"announcements":school_service.announcements()})
+
+@admin_bp.get("/dashboard-stats")
+@admin_required
+def dashboard_stats():
+    from datetime import datetime, timedelta
+    classes = school_service.classes()
+    students = school_service.students()
+    requests = school_service.requests()
+    reports = school_service.reports()
+    admins = admin_service.list()
+    total_storage = sum(s["used"] for s in students)
+    total_files = 0
+    total_folders = 0
+    class_storage = []
+    for cls in classes:
+        cls_students = [s for s in students if s["class_id"] == cls["id"]]
+        cls_used = sum(s["used"] for s in cls_students)
+        class_storage.append({
+            "id": cls["id"],
+            "name": cls["name"],
+            "users": len(cls_students),
+            "storage_used": cls_used,
+            "storage_display": format_size(cls_used),
+        })
+        for s in cls_students:
+            root = file_service.user_root(s)
+            if not root.exists():
+                continue
+            for dirpath, dirnames, filenames in os.walk(root):
+                dirnames[:] = [d for d in dirnames if d != ".DS_Store" and not (Path(dirpath) / d).is_symlink()]
+                total_folders += len(dirnames)
+                total_files += len([f for f in filenames if f != ".DS_Store" and not (Path(dirpath) / f).is_symlink()])
+    today = datetime.now().date()
+    activity = []
+    for i in range(6, -1, -1):
+        day = (today - timedelta(days=i)).isoformat()
+        log_total = log_service.list_all_logs(day=day, page_size=1)["total"]
+        activity.append({"date": day, "operations": log_total})
+    return jsonify({
+        "totals": {
+            "classes": len(classes),
+            "users": len(students),
+            "active_users": sum(1 for s in students if s["status"] == "active"),
+            "pending_requests": len(requests),
+            "reports": len(reports),
+            "admins": len(admins),
+            "storage_used": total_storage,
+            "storage_display": format_size(total_storage),
+            "files": total_files,
+            "folders": total_folders,
+        },
+        "class_storage": class_storage,
+        "activity": activity,
+    })
 
 @admin_bp.post("/admins")
 @admin_required
@@ -153,6 +209,95 @@ def create_student():
 @admin_required
 def clear_login_attempts():
     return jsonify({"cleared":auth_service.clear_login_attempts()})
+
+@admin_bp.get("/personal-files")
+@admin_required
+def personal_files():
+    try:
+        result = admin_file_service.list_entries(g.current_admin["id"], request.args.get("path", ""))
+        shares = admin_file_service.shares_for_admin(g.current_admin["id"])
+        for item in result["entries"]:
+            item["shared_groups"] = shares.get(item["path"], "")
+        return jsonify(result)
+    except (ValueError, FileNotFoundError) as exc:
+        return jsonify({"detail": str(exc)}), 400
+
+@admin_bp.post("/personal-files/upload")
+@admin_required
+def personal_upload():
+    files = request.files.getlist("files"); relatives = request.form.getlist("relative_paths")
+    if not files or len(files) != len(relatives):
+        return jsonify({"detail": "上传参数无效"}), 400
+    try:
+        uploaded = admin_file_service.upload(g.current_admin["id"], request.form.get("path", ""), files, relatives)
+        return jsonify({"uploaded": uploaded})
+    except Exception as exc:
+        return jsonify({"detail": str(exc)}), 400
+
+@admin_bp.post("/personal-files/mkdir")
+@admin_required
+def personal_mkdir():
+    payload = request.get_json(silent=True) or {}
+    try:
+        return jsonify({"path": admin_file_service.mkdir(g.current_admin["id"], payload.get("path", ""), payload.get("name", ""))}), 201
+    except Exception as exc:
+        return jsonify({"detail": str(exc)}), 400
+
+@admin_bp.post("/personal-files/rename")
+@admin_required
+def personal_rename():
+    payload = request.get_json(silent=True) or {}
+    try:
+        return jsonify({"path": admin_file_service.rename(g.current_admin["id"], payload.get("path", ""), payload.get("name", ""))})
+    except Exception as exc:
+        return jsonify({"detail": str(exc)}), 400
+
+@admin_bp.post("/personal-files/move")
+@admin_required
+def personal_move():
+    payload = request.get_json(silent=True) or {}
+    try:
+        return jsonify({"paths": admin_file_service.move(g.current_admin["id"], payload.get("paths", []), payload.get("destination", ""))})
+    except Exception as exc:
+        return jsonify({"detail": str(exc)}), 400
+
+@admin_bp.post("/personal-files/delete")
+@admin_required
+def personal_delete():
+    payload = request.get_json(silent=True) or {}
+    try:
+        admin_file_service.delete(g.current_admin["id"], payload.get("paths", []))
+        return "", 204
+    except Exception as exc:
+        return jsonify({"detail": str(exc)}), 400
+
+@admin_bp.get("/personal-files/download")
+@admin_required
+def personal_download():
+    try:
+        target = admin_file_service.target(g.current_admin["id"], request.args.get("path", ""))
+        if target.is_file():
+            return send_file(target, as_attachment=True, download_name=target.name)
+        archive = tempfile.NamedTemporaryFile(prefix="shuijing-admin-", suffix=".zip", delete=False)
+        archive_path = Path(archive.name); archive.close()
+        with zipfile.ZipFile(archive_path, "w", zipfile.ZIP_DEFLATED) as output:
+            for child in target.rglob("*"):
+                if child.is_file() and not child.is_symlink():
+                    output.write(child, arcname=str(Path(target.name) / child.relative_to(target)))
+        response = send_file(archive_path, as_attachment=True, download_name=f"{target.name}.zip")
+        response.call_on_close(lambda: archive_path.unlink(missing_ok=True)); return response
+    except Exception as exc:
+        return jsonify({"detail": str(exc)}), 400
+
+@admin_bp.post("/personal-files/share")
+@admin_required
+def personal_share():
+    payload = request.get_json(silent=True) or {}
+    try:
+        admin_file_service.set_shares(g.current_admin["id"], payload.get("paths", []), payload.get("class_ids", []))
+        return "", 204
+    except Exception as exc:
+        return jsonify({"detail": str(exc)}), 400
 
 def _student(user_id):
     user=db_manager.find_user_by_id(user_id)

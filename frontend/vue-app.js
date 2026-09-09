@@ -4,7 +4,7 @@ const apiBase = window.STORAGE_API_BASE || "";
 Vue.createApp({
   data() { return {
     token: localStorage.getItem("storage_token") || "", user: {}, groups: [], entries: [], path: "", selected: [],
-    view: "files", registering: false, busy: false, authError: "", toast: "", report: "", announcements: [],
+    view: "files", registering: false, busy: false, authError: "", toast: "", report: "", announcements: [], sharedFiles: [],
     uploading: false, uploadProgress: 0, sort: { field: "name", ascending: true },
     loginForm: { groupId: "", username: "", password: "" }, registerForm: { groupId: "", username: "", password: "", confirm: "" },
   }; },
@@ -38,6 +38,9 @@ Vue.createApp({
     async remove(){if(!window.confirm(`确认删除选中的 ${this.selected.length} 项吗？文件将进入回收站。`))return;const r=await this.request("/files/batch-delete",{method:"POST",json:{paths:this.selected}});if(!r.ok)return this.notify(await this.jsonError(r,"删除失败。"));this.notify("已移入回收站。");await this.loadFiles();await this.refreshUser();},
     async refreshUser(){const r=await this.request("/auth/me");if(r.ok)this.user=(await r.json()).user;},
     async loadAnnouncements(){const r=await this.request("/auth/announcements");if(r.ok)this.announcements=(await r.json()).items||[];},
+    async loadShared(){const r=await this.request("/auth/shared-files");if(!r.ok)return this.notify(await this.jsonError(r,"共享文件读取失败。"));this.sharedFiles=(await r.json()).items||[];},
+    async openShared(){this.view="shared";await this.loadShared();},
+    async downloadShared(item){const r=await this.request(`/auth/shared-files/${item.share_id}/download`);if(!r.ok)return this.notify(await this.jsonError(r,"下载失败。"));const a=document.createElement("a");a.href=URL.createObjectURL(await r.blob());a.download=item.type==="folder"?`${item.name}.zip`:item.name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);},
     async submitReport(){if(!this.report)return;this.busy=true;const r=await this.request("/auth/reports",{method:"POST",json:{content:this.report}});this.busy=false;if(!r.ok)return this.notify(await this.jsonError(r,"提交失败。"));this.report="";this.notify("报告已提交给管理员。");},
   },
 }).mount("#app");
