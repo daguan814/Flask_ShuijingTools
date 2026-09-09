@@ -22,6 +22,9 @@
 .upload-status-card{margin-bottom:16px}
 .upload-status{display:grid;grid-template-columns:minmax(150px,1fr) minmax(180px,2fr) auto;align-items:center;gap:14px;color:#52607a;font-size:13px}
 .upload-status b{color:#6256d9;min-width:40px;text-align:right}
+.personal-dropzone{margin:0 0 16px;padding:18px 22px;border:1px dashed #a9a1ef;border-radius:10px;background:#f7f6ff;color:#6256d9;cursor:pointer;display:flex;align-items:center;gap:12px}
+.personal-dropzone span{color:#7d899f;font-size:13px}
+.personal-dropzone:hover{background:#f0efff;border-color:#6256d9}
 .dialog-hint{margin:0 0 16px;color:#7d899f;line-height:1.6}
 .share-group-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;padding:14px;border:1px solid #e7ebf3;border-radius:8px;background:#fafbfe}
 .selected-count{color:#6256d9;font-weight:700;font-size:13px}
