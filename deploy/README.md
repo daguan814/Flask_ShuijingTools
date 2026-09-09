@@ -58,6 +58,31 @@ ssh -p 12222 shuijing@shuijing.site \
   'docker exec shuijing-nginx nginx -s reload'
 ```
 
+## kkFileView 文件预览
+
+管理员端的“用户组文件”和“个人文件”使用 kkFileView 预览；普通用户端不提供预览。
+
+- 容器名称：`shuijing-kkfileview`
+- 镜像：`keking/kkfileview:latest`
+- 仅监听服务器本机：`127.0.0.1:8012`
+- 公网入口：Nginx 的 `/kk/` 反向代理；不要直接暴露 `8012` 端口。
+- 后端通过 10 分钟有效的单文件预览票据向 kkFileView 提供文件；不要改成公开存储路径或长期链接。
+
+容器回源时必须把 `shuijing.site` 映射到 Docker 宿主机网关，否则服务器外网回环可能出现 `Connection reset`。创建或重建容器时保留以下关键参数：
+
+```bash
+docker run -d --name shuijing-kkfileview --restart unless-stopped \
+  --add-host shuijing.site:host-gateway \
+  -p 127.0.0.1:8012:8012 \
+  -e KK_BASE_URL=https://shuijing.site:8080/kk \
+  -e KK_TRUST_HOST=shuijing.site \
+  -e KK_NOT_TRUST_HOST=localhost,127.0.0.1,10.*,172.16.*,169.254.* \
+  -e KK_FILE_UPLOAD_DISABLE=true -e KK_ADD_TASK=false \
+  keking/kkfileview:latest
+```
+
+修改 `/kk/` 的 Nginx 配置后需要热加载 Nginx；修改 `backend/preview_service.py`、`backend/app.py` 或预览路由后需要重启 `shuijing-tools.service`。
+
 ## 回滚
 
 部署前备份位于服务器：

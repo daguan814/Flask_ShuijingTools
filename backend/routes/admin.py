@@ -61,6 +61,7 @@ def dashboard_stats():
     admin_storage = 0
     total_files = 0
     total_folders = 0
+    student_files = 0
     class_storage = []
     for cls in classes:
         cls_students = [s for s in students if s["class_id"] == cls["id"]]
@@ -79,7 +80,9 @@ def dashboard_stats():
             for dirpath, dirnames, filenames in os.walk(root):
                 dirnames[:] = [d for d in dirnames if d != ".DS_Store" and not (Path(dirpath) / d).is_symlink()]
                 total_folders += len(dirnames)
-                total_files += len([f for f in filenames if f != ".DS_Store" and not (Path(dirpath) / f).is_symlink()])
+                file_count = len([f for f in filenames if f != ".DS_Store" and not (Path(dirpath) / f).is_symlink()])
+                total_files += file_count
+                student_files += file_count
     for admin in admins:
         root = admin_file_service.root(admin["id"])
         admin_storage += file_service._directory_size(root)
@@ -89,6 +92,7 @@ def dashboard_stats():
             total_files += len([f for f in filenames if f != ".DS_Store" and not (Path(dirpath) / f).is_symlink()])
     total_storage = student_storage + admin_storage
     today = datetime.now().date()
+    today_active_users = log_service.active_user_count(today.isoformat())
     activity = []
     for i in range(6, -1, -1):
         day = (today - timedelta(days=i)).isoformat()
@@ -110,6 +114,8 @@ def dashboard_stats():
             "admin_storage_display": format_size(admin_storage),
             "files": total_files,
             "folders": total_folders,
+            "student_files": student_files,
+            "today_active_users": today_active_users,
         },
         "class_storage": class_storage,
         "activity": activity,
