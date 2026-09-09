@@ -23,8 +23,9 @@ class SchoolService:
         ph=db_manager.placeholder(); conn=db_manager.get_connection(); cursor=db_manager.cursor(conn, dictionary=True)
         cursor.execute(f"SELECT id FROM school_classes WHERE id={ph}",(class_id,))
         if not cursor.fetchone(): cursor.close(); conn.close(); raise ValueError("班级不存在")
-        cursor.execute(f"SELECT id FROM storage_users WHERE username={ph}",(username,))
-        if cursor.fetchone(): cursor.close(); conn.close(); raise FileExistsError("姓名已被使用")
+        cursor.execute(f"SELECT id,status FROM storage_users WHERE username={ph}",(username,))
+        existing = cursor.fetchone()
+        if existing and existing["status"] != "deleted": cursor.close(); conn.close(); raise FileExistsError("用户名已被使用")
         cursor.execute(f"SELECT id FROM registration_requests WHERE username={ph} AND status='pending'",(username,))
         if cursor.fetchone(): cursor.close(); conn.close(); raise FileExistsError("该姓名已有待审核申请")
         cursor.execute(f"INSERT INTO registration_requests(class_id,username,password_hash) VALUES({ph},{ph},{ph})",(class_id,username,generate_password_hash(password)))
@@ -54,12 +55,26 @@ class SchoolService:
         if not row: cursor.close(); conn.close(); raise ValueError("申请不存在或已处理")
         if approve:
             now=db_manager.now_expr()
-            cursor.execute(f"INSERT INTO storage_users(username,storage_key,class_id,password_hash,status,created_at,updated_at) VALUES({ph},{ph},{ph},{ph},'active',{now},{now})",(row["username"],row["username"],row["class_id"],row["password_hash"]))
-            user_id=cursor.lastrowid; status="approved"
+            cursor.execute(f"SELECT id,status FROM storage_users WHERE username={ph}",(row["username"],))
+            existing=cursor.fetchone()
+            if existing and existing["status"] != "deleted": raise ValueError("用户名已被使用")
+            if existing:
+                cursor.execute(f"UPDATE storage_users SET storage_key={ph},class_id={ph},password_hash={ph},status='active',deleted_at=NULL,updated_at={now} WHERE id={ph}",(row["username"],row["class_id"],row["password_hash"],existing["id"]))
+                user_id=existing["id"]
+            else:
+                cursor.execute(f"INSERT INTO storage_users(username,storage_key,class_id,password_hash,status,created_at,updated_at) VALUES({ph},{ph},{ph},{ph},'active',{now},{now})",(row["username"],row["username"],row["class_id"],row["password_hash"]))
+                user_id=cursor.lastrowid
+            status="approved"
         else: user_id=None; status="rejected"
         cursor.execute(f"UPDATE registration_requests SET status={ph},reviewed_at={db_manager.now_expr()} WHERE id={ph}",(status,request_id))
         conn.commit(); cursor.close(); conn.close()
         if user_id: file_service.ensure_user_root(db_manager.find_user_by_id(user_id))
+
+    def create_user(self, class_id, username, password):
+        request_id=self.register(class_id,username,password)
+        self.review(request_id,True)
+        user=db_manager.find_user_by_username(file_service.normalize_username(username))
+        return user["id"] if user else None
 
     def create_class(self,name):
         name=file_service.normalize_storage_name(name); ph=db_manager.placeholder(); conn=db_manager.get_connection(); cursor=db_manager.cursor(conn)

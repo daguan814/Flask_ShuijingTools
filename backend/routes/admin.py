@@ -9,6 +9,7 @@ from flask import Blueprint, current_app, jsonify, request, send_file
 from itsdangerous import BadSignature, SignatureExpired
 
 from ..config import ADMIN_PASSWORD, ADMIN_USERNAME
+from ..auth_service import auth_service
 from ..database import db_manager
 from ..file_service import file_service
 from ..log_service import log_service
@@ -101,6 +102,19 @@ def delete_student(user_id):
     try:school_service.delete_student(user_id,str(payload.get("username","")))
     except ValueError as exc:return jsonify({"detail":str(exc)}),400
     return "",204
+
+@admin_bp.post("/students")
+@admin_required
+def create_student():
+    payload=request.get_json(silent=True) or {}
+    try:user_id=school_service.create_user(payload.get("class_id"),payload.get("username"),payload.get("password"))
+    except Exception as exc:return jsonify({"detail":str(exc)}),400
+    return jsonify({"id":user_id}),201
+
+@admin_bp.post("/login-attempts/clear")
+@admin_required
+def clear_login_attempts():
+    return jsonify({"cleared":auth_service.clear_login_attempts()})
 
 def _student(user_id):
     user=db_manager.find_user_by_id(user_id)

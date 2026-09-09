@@ -90,6 +90,12 @@ class AuthService:
         cursor.close()
         conn.close()
 
+    def clear_login_attempts(self) -> int:
+        conn=db_manager.get_connection(); cursor=db_manager.cursor(conn)
+        cursor.execute("DELETE FROM login_attempts")
+        cleared=cursor.rowcount; conn.commit(); cursor.close(); conn.close()
+        return max(0, cleared)
+
     @staticmethod
     def _parse_datetime(value):
         if not value:
