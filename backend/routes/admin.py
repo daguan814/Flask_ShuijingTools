@@ -574,8 +574,19 @@ def recycle():
     items=[]
     for user in school_service.students():
         for item in recycle_service.list_items(user):item.update(user_id=user["id"],username=user["username"],class_name=user["class_name"]);items.append(item)
-    for item in admin_file_service.list_recycle_items():
-        item.update(owner_type="admin", user_id=None, username=item.pop("admin_name"), class_name="管理员个人文件")
+    for row in admin_file_service.list_recycle_items():
+        # SQLite returns sqlite3.Row while MySQL returns a dict.  Copy both so
+        # adding display-only ownership fields never mutates an immutable row.
+        item = dict(row)
+        item.update(
+            owner_type="admin",
+            user_id=None,
+            username=item.pop("admin_name"),
+            class_name="管理员个人文件",
+            name=item.pop("item_name"),
+            type=item.pop("item_type"),
+            path=item["original_path"],
+        )
         items.append(item)
     def deleted_timestamp(item):
         value = item["deleted_at"]

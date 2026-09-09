@@ -109,6 +109,89 @@ class SchoolFlowTest(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 200)
 
+        # 下载不能只验证“生成链接”接口：必须继续请求签名链接并拿到原文件。
+        # 这样可拦住链接编码、缺失运行时导入等会让所有用户无法下载的回归。
+        response = self.client.post(
+            "/api/files/download/prepare",
+            headers=student_headers,
+            json={"paths": ["作业.txt"], "base": ""},
+        )
+        self.assertEqual(response.status_code, 200)
+        ticket_url = response.json["url"]
+        self.assertTrue(ticket_url.startswith("/api/files/download/ticket/"))
+        response = self.client.get(ticket_url)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data, b"homework")
+        self.assertIn("attachment", response.headers["Content-Disposition"])
+        response.close()
+
+        # 管理员个人文件、用户组共享下载和对应操作日志也走独立链路，统一覆盖。
+        response = self.client.post(
+            "/api/admin/personal-files/upload",
+            headers=headers,
+            data={
+                "path": "",
+                "relative_paths": "管理员资料.txt",
+                "files": (BytesIO(b"admin-resource"), "管理员资料.txt"),
+            },
+            content_type="multipart/form-data",
+        )
+        self.assertEqual(response.status_code, 200)
+        response = self.client.get(
+            "/api/admin/personal-files/download?path=管理员资料.txt", headers=headers
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data, b"admin-resource")
+        response.close()
+        self.assertEqual(
+            self.client.post(
+                "/api/admin/personal-files/share",
+                headers=headers,
+                json={"paths": ["管理员资料.txt"], "class_ids": [class_111["id"]]},
+            ).status_code,
+            204,
+        )
+        shared = self.client.get("/api/auth/shared-files", headers=student_headers).json["items"]
+        share = next(item for item in shared if item["name"] == "管理员资料.txt")
+        response = self.client.get(
+            f"/api/auth/shared-files/{share['share_id']}/download", headers=student_headers
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data, b"admin-resource")
+        response.close()
+        download_logs = self.client.get(
+            "/api/admin/logs?action=download", headers=headers
+        ).json["items"]
+        self.assertTrue(
+            any("下载管理员共享文件：管理员资料.txt" in item["content"] for item in download_logs)
+        )
+        self.assertEqual(
+            self.client.post(
+                "/api/admin/personal-files/delete",
+                headers=headers,
+                json={"paths": ["管理员资料.txt"]},
+            ).status_code,
+            200,
+        )
+        admin_recycle = self.client.get("/api/admin/recycle", headers=headers).json["items"]
+        deleted_admin_file = next(
+            item for item in admin_recycle
+            if item["owner_type"] == "admin" and item["name"] == "管理员资料.txt"
+        )
+        self.assertEqual(
+            self.client.post(
+                f"/api/admin/recycle/{deleted_admin_file['id']}/restore",
+                headers=headers,
+                json={"owner_type": "admin"},
+            ).status_code,
+            200,
+        )
+        personal_names = [
+            item["name"]
+            for item in self.client.get("/api/admin/personal-files", headers=headers).json["entries"]
+        ]
+        self.assertIn("管理员资料.txt", personal_names)
+
         response = self.client.get(
             f"/api/admin/classes/{class_111['id']}/files", headers=headers
         )
@@ -126,21 +209,19 @@ class SchoolFlowTest(unittest.TestCase):
             ).status_code,
             200,
         )
-        self.assertEqual(
-            self.client.get(
-                f"/api/admin/classes/{class_111['id']}/download?path=测试学生",
-                headers=headers,
-            ).status_code,
-            200,
+        response = self.client.get(
+            f"/api/admin/classes/{class_111['id']}/download?path=测试学生",
+            headers=headers,
         )
-        self.assertEqual(
-            self.client.post(
-                f"/api/admin/classes/{class_111['id']}/batch-download",
-                headers=headers,
-                json={"paths": ["测试学生/作业.txt"]},
-            ).status_code,
-            200,
+        self.assertEqual(response.status_code, 200)
+        response.close()
+        response = self.client.post(
+            f"/api/admin/classes/{class_111['id']}/batch-download",
+            headers=headers,
+            json={"paths": ["测试学生/作业.txt"]},
         )
+        self.assertEqual(response.status_code, 200)
+        response.close()
         protected = self.client.post(
             f"/api/admin/classes/{class_111['id']}/batch-delete",
             headers=headers,
