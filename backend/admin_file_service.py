@@ -1,8 +1,9 @@
 import os
 import shutil
+import uuid
 from pathlib import Path
 
-from .config import STORAGE_ROOT
+from .config import RECYCLE_ROOT, STORAGE_ROOT
 from .database import db_manager
 from .file_service import file_service
 
@@ -114,15 +115,64 @@ class AdminFileService:
         return moved
 
     def delete(self, admin_id, paths):
+        moved = []
         for raw_path in paths:
             target, relative = self._path(admin_id, raw_path)
             if not relative or not target.exists():
                 raise ValueError("文件不存在或不能删除根目录")
             self.remove_shares(admin_id, relative, include_children=True)
-            if target.is_dir():
-                shutil.rmtree(target)
-            else:
-                target.unlink()
+            stored_name = uuid.uuid4().hex
+            recycle_root = (RECYCLE_ROOT / "管理员文件" / str(int(admin_id))).resolve()
+            recycle_root.mkdir(parents=True, exist_ok=True)
+            destination = recycle_root / stored_name
+            item_type = "folder" if target.is_dir() else "file"
+            item_name = target.name
+            shutil.move(str(target), str(destination))
+            conn = db_manager.get_connection(); cursor = db_manager.cursor(conn); ph = db_manager.placeholder()
+            try:
+                cursor.execute(
+                    f"INSERT INTO admin_recycle_items (admin_id, original_path, stored_name, item_name, item_type, deleted_at) VALUES ({ph}, {ph}, {ph}, {ph}, {ph}, {db_manager.now_expr()})",
+                    (admin_id, relative, stored_name, item_name, item_type),
+                )
+                conn.commit(); moved.append({"id": cursor.lastrowid, "path": relative, "name": item_name})
+            except Exception:
+                conn.rollback()
+                if destination.exists() and not target.exists():
+                    target.parent.mkdir(parents=True, exist_ok=True); shutil.move(str(destination), str(target))
+                raise
+            finally:
+                cursor.close(); conn.close()
+        return moved
+
+    def list_recycle_items(self):
+        conn = db_manager.get_connection(); cursor = db_manager.cursor(conn, dictionary=True)
+        cursor.execute("SELECT r.id,r.admin_id,r.original_path,r.stored_name,r.item_name,r.item_type,r.deleted_at,a.username AS admin_name FROM admin_recycle_items r JOIN admin_users a ON a.id=r.admin_id ORDER BY r.id DESC")
+        rows = cursor.fetchall(); cursor.close(); conn.close()
+        return rows
+
+    def restore_recycle_item(self, item_id):
+        ph = db_manager.placeholder(); conn = db_manager.get_connection(); cursor = db_manager.cursor(conn, dictionary=True)
+        cursor.execute(f"SELECT id,admin_id,original_path,stored_name FROM admin_recycle_items WHERE id={ph}", (item_id,))
+        row = cursor.fetchone()
+        if not row:
+            cursor.close(); conn.close(); raise FileNotFoundError(str(item_id))
+        recycle_root = (RECYCLE_ROOT / "管理员文件" / str(int(row["admin_id"]))).resolve()
+        source = recycle_root / row["stored_name"]
+        target, _ = self._path(row["admin_id"], row["original_path"])
+        if not source.exists():
+            cursor.close(); conn.close(); raise FileNotFoundError(row["original_path"])
+        if target.exists():
+            cursor.close(); conn.close(); raise FileExistsError(row["original_path"])
+        target.parent.mkdir(parents=True, exist_ok=True); shutil.move(str(source), str(target))
+        try:
+            cursor.execute(f"DELETE FROM admin_recycle_items WHERE id={ph}", (item_id,)); conn.commit()
+        except Exception:
+            conn.rollback()
+            if target.exists() and not source.exists(): shutil.move(str(target), str(source))
+            raise
+        finally:
+            cursor.close(); conn.close()
+        return row["original_path"]
 
     def target(self, admin_id, raw_path):
         target, relative = self._path(admin_id, raw_path)

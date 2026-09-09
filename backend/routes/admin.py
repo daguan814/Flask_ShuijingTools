@@ -295,8 +295,7 @@ def personal_move():
 def personal_delete():
     payload = request.get_json(silent=True) or {}
     try:
-        admin_file_service.delete(g.current_admin["id"], payload.get("paths", []))
-        return "", 204
+        return jsonify({"items": admin_file_service.delete(g.current_admin["id"], payload.get("paths", []))})
     except Exception as exc:
         return jsonify({"detail": str(exc)}), 400
 
@@ -574,12 +573,17 @@ def recycle():
     items=[]
     for user in school_service.students():
         for item in recycle_service.list_items(user):item.update(user_id=user["id"],username=user["username"],class_name=user["class_name"]);items.append(item)
+    for item in admin_file_service.list_recycle_items():
+        item.update(owner_type="admin", user_id=None, username=item.pop("admin_name"), class_name="管理员个人文件")
+        items.append(item)
     items.sort(key=lambda x:x["id"],reverse=True);return jsonify({"items":items})
 
 @admin_bp.post("/recycle/<int:item_id>/restore")
 @admin_required
 def restore(item_id):
     payload=request.get_json(silent=True) or {}
-    try:path=recycle_service.restore(_student(int(payload.get("user_id"))),item_id,require_password=False)
+    try:
+        if payload.get("owner_type") == "admin": path=admin_file_service.restore_recycle_item(item_id)
+        else: path=recycle_service.restore(_student(int(payload.get("user_id"))),item_id,require_password=False)
     except Exception as exc:return jsonify({"detail":str(exc)}),400
     return jsonify({"path":path})

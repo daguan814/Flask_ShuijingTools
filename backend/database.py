@@ -154,6 +154,19 @@ class DatabaseManager:
             )
             cursor.execute(
                 """
+                CREATE TABLE IF NOT EXISTS admin_recycle_items (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    admin_id INTEGER NOT NULL,
+                    original_path TEXT NOT NULL,
+                    stored_name TEXT NOT NULL UNIQUE,
+                    item_name TEXT NOT NULL,
+                    item_type TEXT NOT NULL,
+                    deleted_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+                )
+                """
+            )
+            cursor.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_recycle_items_user_id
                 ON recycle_items (user_id)
                 """
@@ -215,6 +228,20 @@ class DatabaseManager:
                     item_type VARCHAR(16) NOT NULL,
                     deleted_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
                     INDEX idx_recycle_items_user_id (user_id)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+                """
+            )
+            cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS admin_recycle_items (
+                    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                    admin_id INT NOT NULL,
+                    original_path VARCHAR(2048) NOT NULL,
+                    stored_name VARCHAR(128) NOT NULL UNIQUE,
+                    item_name VARCHAR(512) NOT NULL,
+                    item_type VARCHAR(16) NOT NULL,
+                    deleted_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    INDEX idx_admin_recycle_items_admin_id (admin_id)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
                 """
             )
