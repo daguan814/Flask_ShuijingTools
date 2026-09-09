@@ -1,4 +1,5 @@
 from functools import wraps
+from datetime import datetime
 import mimetypes
 import os
 import tempfile
@@ -576,7 +577,14 @@ def recycle():
     for item in admin_file_service.list_recycle_items():
         item.update(owner_type="admin", user_id=None, username=item.pop("admin_name"), class_name="管理员个人文件")
         items.append(item)
-    items.sort(key=lambda x:x["id"],reverse=True);return jsonify({"items":items})
+    def deleted_timestamp(item):
+        value = item["deleted_at"]
+        if hasattr(value, "timestamp"):
+            return value.timestamp()
+        return datetime.fromisoformat(str(value).replace("Z", "+00:00")).timestamp()
+
+    items.sort(key=deleted_timestamp, reverse=True)
+    return jsonify({"items":items})
 
 @admin_bp.post("/recycle/<int:item_id>/restore")
 @admin_required
