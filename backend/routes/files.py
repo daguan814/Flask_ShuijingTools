@@ -1,4 +1,5 @@
 from flask import Blueprint, after_this_request, current_app, g, jsonify, request, send_file
+from urllib.parse import quote
 
 from ..file_service import file_service
 from ..log_service import log_service
