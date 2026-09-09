@@ -3,7 +3,6 @@ from flask import Blueprint, after_this_request, current_app, g, jsonify, reques
 from ..file_service import file_service
 from ..log_service import log_service
 from ..recycle_service import recycle_service
-from ..preview_service import preview_service
 
 files_bp = Blueprint("files", __name__, url_prefix="/api/files")
 
@@ -137,26 +136,6 @@ def download_file():
 
     _record_action(g.current_user["id"], "下载文件", relative_path)
     return send_file(target, as_attachment=True, download_name=target.name)
-
-
-@files_bp.route("/preview/start", methods=["POST"])
-def start_preview():
-    payload = request.get_json(silent=True)
-    if not isinstance(payload, dict):
-        return jsonify({"detail": "invalid json"}), 400
-
-    relative_path = str(payload.get("path", ""))
-    try:
-        target = file_service.download_target(g.current_user, relative_path)
-    except FileNotFoundError:
-        return jsonify({"detail": "file not found"}), 404
-    except ValueError as exc:
-        return jsonify({"detail": str(exc)}), 400
-
-    return jsonify({"url": preview_service.preview_url(current_app, {
-        "kind": "student", "user_id": int(g.current_user["id"]),
-        "path": file_service.normalize_relative_path(relative_path),
-    }, target.name)})
 
 
 @files_bp.route("/delete", methods=["POST"])

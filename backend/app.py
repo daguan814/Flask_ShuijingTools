@@ -109,8 +109,6 @@ def create_app():
                 target = file_service.download_target(user, payload["path"]) if user else None
             elif kind == "admin":
                 target = admin_file_service.target(int(payload["admin_id"]), payload["path"])
-            elif kind == "shared":
-                target = admin_file_service.shared_target(int(payload["share_id"]), int(payload["class_id"]))
             else:
                 target = None
         except (BadSignature, SignatureExpired, KeyError, TypeError, ValueError, FileNotFoundError):

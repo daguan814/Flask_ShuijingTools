@@ -2,7 +2,7 @@ import hashlib
 import re
 import uuid
 
-from flask import Blueprint, current_app, g, jsonify, make_response, request, send_file
+from flask import Blueprint, g, jsonify, make_response, request, send_file
 
 from ..config import SECRET_KEY
 
@@ -10,7 +10,6 @@ from ..auth_service import auth_service
 from ..file_service import file_service
 from ..school_service import school_service
 from ..admin_file_service import admin_file_service
-from ..preview_service import preview_service
 from pathlib import Path
 import tempfile
 import zipfile
@@ -146,20 +145,6 @@ def shared_download(share_id):
                     output.write(child, arcname=str(Path(target.name) / child.relative_to(target)))
         response = send_file(archive, as_attachment=True, download_name=f"{target.name}.zip")
         response.call_on_close(lambda: archive.unlink(missing_ok=True)); return response
-    except Exception as exc:
-        return jsonify({"detail": str(exc)}), 404
-
-
-@auth_bp.post("/shared-files/<int:share_id>/preview/start")
-def shared_preview_start(share_id):
-    try:
-        target = admin_file_service.shared_target(share_id, g.current_user["class_id"])
-        if not target.is_file():
-            raise ValueError("文件夹不能直接预览")
-        return jsonify({"url": preview_service.preview_url(current_app, {
-            "kind": "shared", "share_id": share_id,
-            "class_id": int(g.current_user["class_id"]),
-        }, target.name)})
     except Exception as exc:
         return jsonify({"detail": str(exc)}), 404
 
