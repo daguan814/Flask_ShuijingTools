@@ -5,10 +5,10 @@ import zipfile
 from pathlib import Path
 from urllib.parse import quote
 
-from flask import Blueprint, current_app, jsonify, request, send_file
+from flask import Blueprint, current_app, g, jsonify, request, send_file
 from itsdangerous import BadSignature, SignatureExpired
 
-from ..config import ADMIN_PASSWORD, ADMIN_USERNAME
+from ..admin_service import admin_service
 from ..auth_service import auth_service
 from ..database import db_manager
 from ..file_service import file_service
@@ -24,21 +24,47 @@ def admin_required(view):
         token=request.headers.get("Authorization","").removeprefix("Bearer ").strip()
         try: payload=current_app.admin_serializer.loads(token,max_age=12*3600)
         except (BadSignature,SignatureExpired): return jsonify({"detail":"管理员登录已失效"}),401
-        if payload.get("role")!="admin": return jsonify({"detail":"无权限"}),403
+        if payload.get("role")!="admin" or not payload.get("admin_id"):
+            return jsonify({"detail":"无权限"}),403
+        admin = admin_service.find_by_id(payload["admin_id"])
+        if not admin or admin["status"] != "active":
+            return jsonify({"detail":"管理员账号不可用，请重新登录"}),401
+        g.current_admin = admin
         return view(*args,**kwargs)
     return wrapped
 
 @admin_bp.post("/login")
 def login():
     payload=request.get_json(silent=True) or {}
-    if not ADMIN_PASSWORD or payload.get("username")!=ADMIN_USERNAME or payload.get("password")!=ADMIN_PASSWORD:
+    admin = admin_service.login(payload.get("username"), payload.get("password"))
+    if not admin:
         return jsonify({"detail":"管理员账号或密码错误"}),401
-    return jsonify({"token":current_app.admin_serializer.dumps({"role":"admin"})})
+    return jsonify({"token":current_app.admin_serializer.dumps({"role":"admin", "admin_id":admin["id"]})})
 
 @admin_bp.get("/overview")
 @admin_required
 def overview():
-    return jsonify({"classes":school_service.classes(),"students":school_service.students(),"requests":school_service.requests(),"reports":school_service.reports(),"announcements":school_service.announcements()})
+    return jsonify({"admins":admin_service.list(),"classes":school_service.classes(),"students":school_service.students(),"requests":school_service.requests(),"reports":school_service.reports(),"announcements":school_service.announcements()})
+
+@admin_bp.post("/admins")
+@admin_required
+def create_admin():
+    payload = request.get_json(silent=True) or {}
+    try:
+        admin_id = admin_service.create(payload.get("username"), payload.get("password"))
+    except ValueError as exc:
+        return jsonify({"detail":str(exc)}),400
+    return jsonify({"id":admin_id}),201
+
+@admin_bp.patch("/admins/<int:admin_id>")
+@admin_required
+def update_admin(admin_id):
+    payload = request.get_json(silent=True) or {}
+    try:
+        admin_service.update(admin_id, payload.get("username"), payload.get("password"), payload.get("status"))
+    except ValueError as exc:
+        return jsonify({"detail":str(exc)}),400
+    return "",204
 
 @admin_bp.get("/messages")
 @admin_required

@@ -4,6 +4,7 @@ from pathlib import Path
 
 import mysql.connector
 from mysql.connector import pooling
+from werkzeug.security import generate_password_hash
 
 from .config import (
     DB_DRIVER,
@@ -12,6 +13,8 @@ from .config import (
     DB_PASSWORD,
     DB_PORT,
     DB_USER,
+    ADMIN_PASSWORD,
+    ADMIN_USERNAME,
     DEFAULT_USERS,
     SQLITE_DB_PATH,
 )
@@ -228,6 +231,20 @@ class DatabaseManager:
             )
 
         self._init_school_schema(cursor)
+        self._init_admin_schema(cursor)
+
+        # 从原来的环境变量管理员平滑迁移：仅在管理员不存在时创建，绝不覆盖
+        # 已在数据库中修改过的管理员密码或状态。
+        if ADMIN_USERNAME and ADMIN_PASSWORD:
+            ph = self.placeholder()
+            cursor.execute(f"SELECT id FROM admin_users WHERE username={ph}", (ADMIN_USERNAME,))
+            if not cursor.fetchone():
+                now_expr = self.now_expr()
+                cursor.execute(
+                    f"INSERT INTO admin_users(username,password_hash,status,created_at,updated_at) "
+                    f"VALUES({ph},{ph},'active',{now_expr},{now_expr})",
+                    (ADMIN_USERNAME, generate_password_hash(ADMIN_PASSWORD)),
+                )
 
         now = datetime.now().isoformat(sep=" ", timespec="seconds")
         insert_sql = (
@@ -323,6 +340,26 @@ class DatabaseManager:
         for name,definition in definitions.items():
             if name not in columns:
                 cursor.execute(f"ALTER TABLE storage_users ADD COLUMN {name} {definition}")
+
+    def _init_admin_schema(self, cursor):
+        if self.is_sqlite:
+            cursor.execute("""CREATE TABLE IF NOT EXISTS admin_users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT NOT NULL UNIQUE,
+                password_hash TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'active',
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )""")
+        else:
+            cursor.execute("""CREATE TABLE IF NOT EXISTS admin_users (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                username VARCHAR(64) NOT NULL UNIQUE,
+                password_hash VARCHAR(255) NOT NULL,
+                status VARCHAR(16) NOT NULL DEFAULT 'active',
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci""")
 
     def find_user_by_username(self, username: str):
         if not username:

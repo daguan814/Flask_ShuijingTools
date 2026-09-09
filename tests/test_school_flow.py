@@ -39,6 +39,26 @@ class SchoolFlowTest(unittest.TestCase):
 
     def test_registration_files_messages_and_admin_restore(self):
         headers = self.admin_headers()
+        response = self.client.post(
+            "/api/admin/admins", headers=headers,
+            json={"username": "second-admin", "password": "second-admin-password"},
+        )
+        self.assertEqual(response.status_code, 201)
+        second_admin_id = response.json["id"]
+        self.assertEqual(
+            self.client.post(
+                "/api/admin/login",
+                json={"username": "second-admin", "password": "second-admin-password"},
+            ).status_code,
+            200,
+        )
+        self.assertEqual(
+            self.client.patch(
+                f"/api/admin/admins/{second_admin_id}", headers=headers,
+                json={"status": "disabled"},
+            ).status_code,
+            204,
+        )
         response = self.client.post("/api/admin/classes", headers=headers, json={"name": "测试用户组"})
         self.assertEqual(response.status_code, 201)
         class_111 = {"id": response.json["id"], "name": "测试用户组"}
