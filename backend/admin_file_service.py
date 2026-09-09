@@ -3,6 +3,7 @@ import shutil
 import uuid
 from pathlib import Path
 
+from .admin_service import admin_service
 from .config import RECYCLE_ROOT, STORAGE_ROOT
 from .database import db_manager
 from .file_service import file_service
@@ -11,10 +12,68 @@ from .file_service import file_service
 class AdminFileService:
     """Dedicated private storage for administrators and controlled group sharing."""
 
+    def _owner_name(self, admin_id):
+        admin = admin_service.find_by_id(admin_id)
+        if not admin:
+            raise ValueError("管理员不存在")
+        return file_service.normalize_storage_name(admin["username"])
+
+    @staticmethod
+    def _directory_base(base):
+        directory = (base / "管理员文件").resolve()
+        directory.mkdir(parents=True, exist_ok=True)
+        return directory
+
+    def _owner_directory(self, base, admin_id, owner_name, create=True):
+        """Return the username-based directory and migrate a legacy ID directory once."""
+        directory = self._directory_base(base)
+        named = (directory / file_service.normalize_storage_name(owner_name)).resolve()
+        legacy = (directory / str(int(admin_id))).resolve()
+        if named.parent != directory or legacy.parent != directory:
+            raise ValueError("管理员文件目录无效")
+        if legacy.exists() and legacy != named:
+            if named.exists():
+                if any(legacy.iterdir()):
+                    raise FileExistsError(f"管理员文件目录冲突：{owner_name}")
+                legacy.rmdir()
+            else:
+                shutil.move(str(legacy), str(named))
+        if create:
+            named.mkdir(parents=True, exist_ok=True)
+        return named
+
     def root(self, admin_id):
-        root = (STORAGE_ROOT / "管理员文件" / str(int(admin_id))).resolve()
-        root.mkdir(parents=True, exist_ok=True)
-        return root
+        return self._owner_directory(STORAGE_ROOT, admin_id, self._owner_name(admin_id))
+
+    def recycle_root(self, admin_id, create=True):
+        return self._owner_directory(
+            RECYCLE_ROOT, admin_id, self._owner_name(admin_id), create=create
+        )
+
+    def rename_owner_directories(self, admin_id, old_name, new_name):
+        """Move storage and recycle directories when an administrator is renamed."""
+        old_name = file_service.normalize_storage_name(old_name)
+        new_name = file_service.normalize_storage_name(new_name)
+        if old_name == new_name:
+            return
+        moved = []
+        try:
+            for base in (STORAGE_ROOT, RECYCLE_ROOT):
+                directory = self._directory_base(base)
+                old_root = self._owner_directory(base, admin_id, old_name, create=False)
+                new_root = (directory / new_name).resolve()
+                if new_root.parent != directory:
+                    raise ValueError("管理员文件目录无效")
+                if old_root.exists():
+                    if new_root.exists():
+                        raise FileExistsError(f"管理员文件目录冲突：{new_name}")
+                    shutil.move(str(old_root), str(new_root))
+                    moved.append((new_root, old_root))
+        except Exception:
+            for source, target in reversed(moved):
+                if source.exists() and not target.exists():
+                    shutil.move(str(source), str(target))
+            raise
 
     def _path(self, admin_id, raw_path=""):
         relative = file_service.normalize_relative_path(raw_path)
@@ -122,8 +181,7 @@ class AdminFileService:
                 raise ValueError("文件不存在或不能删除根目录")
             self.remove_shares(admin_id, relative, include_children=True)
             stored_name = uuid.uuid4().hex
-            recycle_root = (RECYCLE_ROOT / "管理员文件" / str(int(admin_id))).resolve()
-            recycle_root.mkdir(parents=True, exist_ok=True)
+            recycle_root = self.recycle_root(admin_id)
             destination = recycle_root / stored_name
             item_type = "folder" if target.is_dir() else "file"
             item_name = target.name
@@ -156,7 +214,7 @@ class AdminFileService:
         row = cursor.fetchone()
         if not row:
             cursor.close(); conn.close(); raise FileNotFoundError(str(item_id))
-        recycle_root = (RECYCLE_ROOT / "管理员文件" / str(int(row["admin_id"]))).resolve()
+        recycle_root = self.recycle_root(row["admin_id"], create=False)
         source = recycle_root / row["stored_name"]
         target, _ = self._path(row["admin_id"], row["original_path"])
         if not source.exists():

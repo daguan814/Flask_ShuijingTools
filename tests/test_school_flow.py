@@ -191,6 +191,21 @@ class SchoolFlowTest(unittest.TestCase):
             for item in self.client.get("/api/admin/personal-files", headers=headers).json["entries"]
         ]
         self.assertIn("管理员资料.txt", personal_names)
+        self.assertTrue((_ROOT / "storage" / "管理员文件" / "admin" / "管理员资料.txt").is_file())
+
+        # 管理员用户名是文件目录名；改名时个人文件与回收站目录应同步移动。
+        self.assertEqual(
+            self.client.patch(
+                "/api/admin/admins/1",
+                headers=headers,
+                json={"username": "renamed-admin"},
+            ).status_code,
+            204,
+        )
+        self.assertFalse((_ROOT / "storage" / "管理员文件" / "admin").exists())
+        self.assertTrue(
+            (_ROOT / "storage" / "管理员文件" / "renamed-admin" / "管理员资料.txt").is_file()
+        )
 
         response = self.client.get(
             f"/api/admin/classes/{class_111['id']}/files", headers=headers

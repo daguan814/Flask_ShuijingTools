@@ -139,10 +139,27 @@ def create_admin():
 @admin_required
 def update_admin(admin_id):
     payload = request.get_json(silent=True) or {}
+    current = admin_service.find_by_id(admin_id)
+    if not current:
+        return jsonify({"detail":"管理员不存在"}),400
+    old_name = current["username"]
+    new_name = payload.get("username", old_name)
+    moved_directory = False
     try:
+        if new_name != old_name:
+            admin_file_service.rename_owner_directories(admin_id, old_name, new_name)
+            moved_directory = True
         admin_service.update(admin_id, payload.get("username"), payload.get("password"), payload.get("status"))
-    except ValueError as exc:
-        return jsonify({"detail":str(exc)}),400
+    except Exception as exc:
+        if moved_directory:
+            try:
+                admin_file_service.rename_owner_directories(admin_id, new_name, old_name)
+            except Exception:
+                current_app.logger.exception("管理员目录回滚失败")
+        if isinstance(exc, (ValueError, FileExistsError)):
+            return jsonify({"detail":str(exc)}),400
+        current_app.logger.exception("管理员信息更新失败")
+        return jsonify({"detail":"管理员信息更新失败"}),500
     return "",204
 
 @admin_bp.get("/messages")
