@@ -57,7 +57,8 @@ def dashboard_stats():
     requests = school_service.requests()
     reports = school_service.reports()
     admins = admin_service.list()
-    total_storage = sum(s["used"] for s in students)
+    student_storage = sum(s["used"] for s in students)
+    admin_storage = 0
     total_files = 0
     total_folders = 0
     class_storage = []
@@ -79,6 +80,14 @@ def dashboard_stats():
                 dirnames[:] = [d for d in dirnames if d != ".DS_Store" and not (Path(dirpath) / d).is_symlink()]
                 total_folders += len(dirnames)
                 total_files += len([f for f in filenames if f != ".DS_Store" and not (Path(dirpath) / f).is_symlink()])
+    for admin in admins:
+        root = admin_file_service.root(admin["id"])
+        admin_storage += file_service._directory_size(root)
+        for dirpath, dirnames, filenames in os.walk(root):
+            dirnames[:] = [d for d in dirnames if d != ".DS_Store" and not (Path(dirpath) / d).is_symlink()]
+            total_folders += len(dirnames)
+            total_files += len([f for f in filenames if f != ".DS_Store" and not (Path(dirpath) / f).is_symlink()])
+    total_storage = student_storage + admin_storage
     today = datetime.now().date()
     activity = []
     for i in range(6, -1, -1):
@@ -95,6 +104,10 @@ def dashboard_stats():
             "admins": len(admins),
             "storage_used": total_storage,
             "storage_display": format_size(total_storage),
+            "student_storage_used": student_storage,
+            "student_storage_display": format_size(student_storage),
+            "admin_storage_used": admin_storage,
+            "admin_storage_display": format_size(admin_storage),
             "files": total_files,
             "folders": total_folders,
         },
@@ -219,11 +232,13 @@ def personal_files():
         # 共享状态仅是附加信息，不能因为记录表异常而阻塞管理员读取或上传文件。
         try:
             shares = admin_file_service.shares_for_admin(g.current_admin["id"])
+            share_ids = admin_file_service.share_ids_for_admin(g.current_admin["id"])
         except Exception:
             current_app.logger.exception("Failed to load administrator file shares")
-            shares = {}
+            shares, share_ids = {}, {}
         for item in result["entries"]:
             item["shared_groups"] = shares.get(item["path"], "")
+            item["shared_class_ids"] = share_ids.get(item["path"], [])
         return jsonify(result)
     except (ValueError, FileNotFoundError) as exc:
         return jsonify({"detail": str(exc)}), 400

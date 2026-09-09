@@ -167,6 +167,16 @@ class AdminFileService:
         rows = cursor.fetchall(); cursor.close(); conn.close()
         return {row["relative_path"]: row["group_names"] for row in rows}
 
+    def share_ids_for_admin(self, admin_id):
+        ph = db_manager.placeholder()
+        conn = db_manager.get_connection(); cursor = db_manager.cursor(conn, dictionary=True)
+        cursor.execute(f"SELECT relative_path,class_id FROM admin_file_shares WHERE admin_id={ph}", (admin_id,))
+        rows = cursor.fetchall(); cursor.close(); conn.close()
+        result = {}
+        for row in rows:
+            result.setdefault(row["relative_path"], []).append(row["class_id"])
+        return result
+
     def shared_for_user(self, class_id):
         ph = db_manager.placeholder()
         conn = db_manager.get_connection(); cursor = db_manager.cursor(conn, dictionary=True)
