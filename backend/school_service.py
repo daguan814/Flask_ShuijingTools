@@ -45,9 +45,12 @@ class SchoolService:
             FROM storage_users u JOIN school_classes c ON c.id=u.class_id
             WHERE u.class_id={ph} AND u.status!='deleted' ORDER BY u.username""",(class_id,))
 
-    def requests(self):
+    def requests(self, class_id=None, day=None):
+        ph=db_manager.placeholder(); where=["r.status='pending'"]; params=[]
+        if class_id: where.append(f"r.class_id={ph}"); params.append(class_id)
+        if day: where.append(f"DATE(r.created_at)={ph}"); params.append(day)
         return self.rows("""SELECT r.id,r.username,r.class_id,r.created_at,c.name AS class_name FROM registration_requests r
-            JOIN school_classes c ON c.id=r.class_id WHERE r.status='pending' ORDER BY r.id""")
+            JOIN school_classes c ON c.id=r.class_id WHERE """+" AND ".join(where)+" ORDER BY r.id",tuple(params))
 
     def review(self,request_id,approve):
         ph=db_manager.placeholder(); conn=db_manager.get_connection(); cursor=db_manager.cursor(conn,dictionary=True)
@@ -219,9 +222,13 @@ class SchoolService:
         ph=db_manager.placeholder(); conn=db_manager.get_connection(); cursor=db_manager.cursor(conn)
         cursor.execute(f"INSERT INTO student_reports(user_id,content) VALUES({ph},{ph})",(user_id,content)); conn.commit(); cursor.close(); conn.close()
 
-    def reports(self):
-        return self.rows("""SELECT r.id,r.content,r.status,r.created_at,u.username,c.name AS class_name FROM student_reports r
-            JOIN storage_users u ON u.id=r.user_id JOIN school_classes c ON c.id=u.class_id ORDER BY r.id DESC""")
+    def reports(self, class_id=None, day=None):
+        ph=db_manager.placeholder(); where=[]; params=[]
+        if class_id: where.append(f"u.class_id={ph}"); params.append(class_id)
+        if day: where.append(f"DATE(r.created_at)={ph}"); params.append(day)
+        suffix=(" WHERE "+" AND ".join(where)) if where else ""
+        return self.rows("""SELECT r.id,r.content,r.status,r.created_at,u.username,u.class_id,c.name AS class_name FROM student_reports r
+            JOIN storage_users u ON u.id=r.user_id JOIN school_classes c ON c.id=u.class_id"""+suffix+" ORDER BY r.id DESC",tuple(params))
 
 
 school_service=SchoolService()

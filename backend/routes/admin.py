@@ -40,6 +40,18 @@ def login():
 def overview():
     return jsonify({"classes":school_service.classes(),"students":school_service.students(),"requests":school_service.requests(),"reports":school_service.reports(),"announcements":school_service.announcements()})
 
+@admin_bp.get("/messages")
+@admin_required
+def messages():
+    try:
+        class_id=int(request.args.get("class_id","0") or 0) or None
+        day=request.args.get("date","").strip() or None
+        if day:
+            from datetime import datetime
+            datetime.strptime(day,"%Y-%m-%d")
+    except ValueError:return jsonify({"detail":"消息筛选参数无效"}),400
+    return jsonify({"requests":school_service.requests(class_id,day),"reports":school_service.reports(class_id,day)})
+
 @admin_bp.get("/logs")
 @admin_required
 def logs():
