@@ -10,6 +10,7 @@ from ..auth_service import auth_service
 from ..file_service import file_service
 from ..school_service import school_service
 from ..admin_file_service import admin_file_service
+from ..log_service import log_service
 from pathlib import Path
 import tempfile
 import zipfile
@@ -136,6 +137,7 @@ def shared_download(share_id):
     try:
         target = admin_file_service.shared_target(share_id, g.current_user["class_id"])
         if target.is_file():
+            log_service.add_log(g.current_user["id"], f"下载管理员共享文件：{target.name}")
             return send_file(target, as_attachment=True, download_name=target.name)
         temp = tempfile.NamedTemporaryFile(prefix="shuijing-shared-", suffix=".zip", delete=False)
         archive = Path(temp.name); temp.close()
@@ -143,6 +145,7 @@ def shared_download(share_id):
             for child in target.rglob("*"):
                 if child.is_file() and not child.is_symlink():
                     output.write(child, arcname=str(Path(target.name) / child.relative_to(target)))
+        log_service.add_log(g.current_user["id"], f"下载管理员共享文件夹：{target.name}")
         response = send_file(archive, as_attachment=True, download_name=f"{target.name}.zip")
         response.call_on_close(lambda: archive.unlink(missing_ok=True)); return response
     except Exception as exc:
