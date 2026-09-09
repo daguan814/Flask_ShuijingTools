@@ -4,7 +4,7 @@ const apiBase = window.STORAGE_API_BASE || "";
 Vue.createApp({
   data() { return {
     token: localStorage.getItem("storage_token") || "", user: {}, groups: [], entries: [], path: "", selected: [],
-    view: "files", registering: false, busy: false, authError: "", toast: "", report: "", announcements: [], sharedFiles: [],
+    view: "files", registering: false, busy: false, authError: "", toast: "", report: "", announcements: [], sharedFiles: [], previewUrl: "", previewName: "", previewOpen: false,
     uploading: false, uploadProgress: 0, sort: { field: "name", ascending: true },
     loginForm: { groupId: "", username: "", password: "" }, registerForm: { groupId: "", username: "", password: "", confirm: "" },
   }; },
@@ -28,7 +28,8 @@ Vue.createApp({
     async loadFiles() { try { const r=await this.request("/files?path="+encodeURIComponent(this.path)); if(!r.ok){this.notify(await this.jsonError(r,"目录读取失败。"));return;} const data=await r.json();this.path=data.path||"";this.entries=data.entries||[];this.selected=[]; }catch(_){this.notify("目录读取失败。");} },
     toggleAll(e) {this.selected=e.target.checked?this.entries.map(x=>x.path):[];}, toggleSort(field){this.sort.field===field?this.sort.ascending=!this.sort.ascending:this.sort={field,ascending:true};}, sortMark(field){return this.sort.field===field?(this.sort.ascending?"↑":"↓"):"";},
     formatSize(bytes){const n=Number(bytes||0);if(!n)return "0 B";const u=["B","KB","MB","GB","TB"],i=Math.min(Math.floor(Math.log(n)/Math.log(1024)),u.length-1);return `${(n/1024**i).toFixed(i?1:0)} ${u[i]}`;}, formatDate(value){if(!value)return "--";const d=new Date(value.replace?.(" ","T")||value);return Number.isNaN(d)?value:`${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,"0")}/${String(d.getDate()).padStart(2,"0")} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;}, fileEmoji(name){const ext=(name.split(".").pop()||"").toLowerCase();if(["jpg","jpeg","png","gif","webp"].includes(ext))return "🖼️";if(["doc","docx"].includes(ext))return "📘";if(["xls","xlsx"].includes(ext))return "📗";if(["ppt","pptx"].includes(ext))return "📙";if(ext==="pdf")return "📕";if(["zip","rar","7z"].includes(ext))return "🗜️";return "📄";},
-    async openEntry(item){if(item.type==="folder")return this.openFiles(item.path);this.notify("请选择文件后点击下载按钮。")},
+    async openEntry(item){if(item.type==="folder")return this.openFiles(item.path);await this.previewFile(`/files/preview/start`,item.path,item.name)},
+    async previewFile(endpoint,path,name){const r=await this.request(endpoint,{method:"POST",json:{path}});if(!r.ok)return this.notify(await this.jsonError(r,"预览创建失败。"));this.previewUrl=(await r.json()).url;this.previewName=name;this.previewOpen=true},
     async makeFolder(){const name=window.prompt("请输入新文件夹名称：");if(!name?.trim())return;const r=await this.request("/files/mkdir",{method:"POST",json:{path:this.path,name:name.trim()}});if(!r.ok)return this.notify(await this.jsonError(r,"创建失败。"));this.notify("文件夹已创建。");await this.loadFiles();},
     async upload(files, folder=false){const list=Array.from(files||[]);if(!list.length)return;this.uploading=true;this.uploadProgress=5;try{const form=new FormData();form.append("path",this.path);list.forEach(file=>{form.append("files",file);form.append("relative_paths",folder?(file.webkitRelativePath||file.name):file.name);});const headers={Authorization:`Bearer ${this.token}`};const r=await fetch(apiBase+"/api/files/upload",{method:"POST",headers,body:form});this.uploadProgress=100;if(!r.ok)return this.notify(await this.jsonError(r,"上传失败。"));this.notify("上传完成。");await this.loadFiles();await this.refreshUser();}catch(_){this.notify("上传失败。");}finally{this.uploading=false;this.$refs.files.value="";this.$refs.folder.value="";}},
     dropFiles(event){this.upload(event.dataTransfer.files);},
@@ -40,6 +41,7 @@ Vue.createApp({
     async loadAnnouncements(){const r=await this.request("/auth/announcements");if(r.ok)this.announcements=(await r.json()).items||[];},
     async loadShared(){const r=await this.request("/auth/shared-files");if(!r.ok)return this.notify(await this.jsonError(r,"共享文件读取失败。"));this.sharedFiles=(await r.json()).items||[];},
     async openShared(){this.view="shared";await this.loadShared();},
+    async previewShared(item){if(item.type==="folder")return this.notify("文件夹请下载后查看。");const r=await this.request(`/auth/shared-files/${item.share_id}/preview/start`,{method:"POST"});if(!r.ok)return this.notify(await this.jsonError(r,"预览创建失败。"));this.previewUrl=(await r.json()).url;this.previewName=item.name;this.previewOpen=true},
     async downloadShared(item){const r=await this.request(`/auth/shared-files/${item.share_id}/download`);if(!r.ok)return this.notify(await this.jsonError(r,"下载失败。"));const a=document.createElement("a");a.href=URL.createObjectURL(await r.blob());a.download=item.type==="folder"?`${item.name}.zip`:item.name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);},
     async submitReport(){if(!this.report)return;this.busy=true;const r=await this.request("/auth/reports",{method:"POST",json:{content:this.report}});this.busy=false;if(!r.ok)return this.notify(await this.jsonError(r,"提交失败。"));this.report="";this.notify("报告已提交给管理员。");},
   },

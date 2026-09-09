@@ -1,13 +1,9 @@
-import os
-import mimetypes
-from urllib.parse import quote
-
 from flask import Blueprint, after_this_request, current_app, g, jsonify, request, send_file
-from itsdangerous import BadSignature, SignatureExpired
 
 from ..file_service import file_service
 from ..log_service import log_service
 from ..recycle_service import recycle_service
+from ..preview_service import preview_service
 
 files_bp = Blueprint("files", __name__, url_prefix="/api/files")
 
@@ -143,25 +139,6 @@ def download_file():
     return send_file(target, as_attachment=True, download_name=target.name)
 
 
-@files_bp.route("/preview", methods=["GET"])
-def preview_file():
-    relative_path = request.args.get("path", "")
-    try:
-        target = file_service.download_target(g.current_user, relative_path)
-    except FileNotFoundError:
-        return jsonify({"detail": "file not found"}), 404
-    except ValueError as exc:
-        return jsonify({"detail": str(exc)}), 400
-
-    mimetype = mimetypes.guess_type(target.name)[0] or "application/octet-stream"
-    return send_file(
-        target,
-        as_attachment=False,
-        download_name=target.name,
-        mimetype=mimetype,
-    )
-
-
 @files_bp.route("/preview/start", methods=["POST"])
 def start_preview():
     payload = request.get_json(silent=True)
@@ -176,27 +153,10 @@ def start_preview():
     except ValueError as exc:
         return jsonify({"detail": str(exc)}), 400
 
-    normalized = file_service.normalize_relative_path(relative_path)
-    parent = normalized.rsplit("/", 1)[0] if "/" in normalized else ""
-    preview_name = normalized.rsplit("/", 1)[-1]
-    preview_token = current_app.preview_serializer.dumps(
-        {
-            "user_id": int(g.current_user["id"]),
-            "root": parent,
-        }
-    )
-
-    response = jsonify({"url": f"/preview/{quote(preview_name)}"})
-    response.set_cookie(
-        "preview_session",
-        preview_token,
-        max_age=3600,
-        path="/preview",
-        httponly=True,
-        samesite="Lax",
-        secure=request.is_secure,
-    )
-    return response
+    return jsonify({"url": preview_service.preview_url(current_app, {
+        "kind": "student", "user_id": int(g.current_user["id"]),
+        "path": file_service.normalize_relative_path(relative_path),
+    })})
 
 
 @files_bp.route("/delete", methods=["POST"])

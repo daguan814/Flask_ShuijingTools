@@ -4,7 +4,6 @@ import os
 import tempfile
 import zipfile
 from pathlib import Path
-from urllib.parse import quote
 
 from flask import Blueprint, current_app, g, jsonify, request, send_file
 from itsdangerous import BadSignature, SignatureExpired
@@ -17,6 +16,7 @@ from ..file_service import file_service, format_size
 from ..log_service import log_service
 from ..recycle_service import recycle_service
 from ..school_service import school_service
+from ..preview_service import preview_service
 
 admin_bp=Blueprint("admin",__name__,url_prefix="/api/admin")
 
@@ -320,6 +320,20 @@ def personal_share():
     except Exception as exc:
         return jsonify({"detail": str(exc)}), 400
 
+@admin_bp.post("/personal-files/preview/start")
+@admin_required
+def personal_preview_start():
+    try:
+        path = request.args.get("path", "")
+        target = admin_file_service.target(g.current_admin["id"], path)
+        if not target.is_file():
+            raise ValueError("文件夹不能直接预览")
+        return jsonify({"url": preview_service.preview_url(current_app, {
+            "kind": "admin", "admin_id": int(g.current_admin["id"]), "path": path,
+        })})
+    except Exception as exc:
+        return jsonify({"detail": str(exc)}), 400
+
 def _student(user_id):
     user=db_manager.find_user_by_id(user_id)
     if not user or user["status"]=="deleted":raise ValueError("学生不存在")
@@ -429,14 +443,9 @@ def start_class_preview(class_id):
         user,sub_path,_=_class_path(class_id,request.args.get("path",""),False)
         target=file_service.download_target(user,sub_path)
     except Exception as exc:return jsonify({"detail":str(exc)}),400
-    parent=sub_path.rsplit("/",1)[0] if "/" in sub_path else ""
-    response=jsonify({"url":f"/preview/{quote(target.name)}"})
-    response.set_cookie(
-        "preview_session",
-        current_app.preview_serializer.dumps({"user_id":int(user["id"]),"root":parent}),
-        max_age=3600,path="/preview",httponly=True,samesite="Lax",secure=request.is_secure,
-    )
-    return response
+    return jsonify({"url":preview_service.preview_url(current_app,{
+        "kind":"student","user_id":int(user["id"]),"path":sub_path,
+    })})
 
 @admin_bp.post("/classes/<int:class_id>/upload")
 @admin_required

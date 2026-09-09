@@ -1345,3 +1345,8 @@ body {
     align-self: center;
   }
 }
+/* kkFileView is embedded so users stay within the cloud-drive workflow. */
+.preview-modal{position:fixed;z-index:1000;inset:0;display:grid;place-items:center;padding:24px;background:rgba(15,23,42,.56)}
+.preview-dialog{display:flex;flex-direction:column;width:min(1180px,96vw);height:min(820px,92vh);overflow:hidden;border:1px solid rgba(255,255,255,.5);border-radius:18px;background:#fff;box-shadow:0 28px 70px rgba(15,23,42,.35)}
+.preview-title{display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:56px;padding:0 16px;border-bottom:1px solid #e7ebf6;color:#202a44}
+.preview-frame{flex:1;width:100%;border:0;background:#f8fafc}

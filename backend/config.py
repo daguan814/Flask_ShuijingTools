@@ -36,3 +36,9 @@ ALLOWED_ORIGINS = {
 }
 
 DEFAULT_USERS = ["shuijing", "txt"]
+
+# kkFileView is accessed only through the same public Nginx endpoint.  These
+# values can be overridden in production without embedding a host in code.
+PREVIEW_PUBLIC_URL = os.getenv("PREVIEW_PUBLIC_URL", "https://shuijing.site:8080").rstrip("/")
+KKFILEVIEW_URL = os.getenv("KKFILEVIEW_URL", f"{PREVIEW_PUBLIC_URL}/kk").rstrip("/")
+KK_PREVIEW_MAX_AGE = int(os.getenv("KK_PREVIEW_MAX_AGE", "600"))

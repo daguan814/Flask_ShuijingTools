@@ -6,9 +6,10 @@ from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 from werkzeug.exceptions import RequestEntityTooLarge
 
 from .auth_service import auth_service
-from .config import ALLOWED_ORIGINS, APP_HOST, APP_PORT, MAX_CONTENT_LENGTH, SECRET_KEY
+from .config import ALLOWED_ORIGINS, APP_HOST, APP_PORT, KK_PREVIEW_MAX_AGE, MAX_CONTENT_LENGTH, SECRET_KEY
 from .database import db_manager
 from .file_service import file_service
+from .admin_file_service import admin_file_service
 from .routes.auth import auth_bp
 from .routes.files import files_bp
 from .routes.admin import admin_bp
@@ -37,9 +38,8 @@ def create_app():
     app.config["SECRET_KEY"] = SECRET_KEY
     if SECRET_KEY == "shuijing-tools-preview-secret-change-me" and os.getenv("FLASK_DEBUG", "0") != "1":
         raise RuntimeError("SECRET_KEY must be configured")
-    app.preview_serializer = URLSafeTimedSerializer(
-        app.config["SECRET_KEY"],
-        salt="shuijing-file-preview",
+    app.kk_preview_serializer = URLSafeTimedSerializer(
+        app.config["SECRET_KEY"], salt="shuijing-kkfileview-preview"
     )
     app.download_serializer = URLSafeTimedSerializer(
         app.config["SECRET_KEY"], salt="shuijing-file-download"
@@ -66,7 +66,7 @@ def create_app():
         if not request.path.startswith("/api"):
             return None
 
-        if request.path in ("/api/health", "/api/auth/login", "/api/auth/classes", "/api/auth/register") or request.path.startswith("/api/admin/") or request.path.startswith(
+        if request.path in ("/api/health", "/api/auth/login", "/api/auth/classes", "/api/auth/register") or request.path.startswith("/api/admin/") or request.path.startswith("/api/preview-source/") or request.path.startswith(
             "/api/files/download/ticket/"
         ):
             return None
@@ -98,35 +98,29 @@ def create_app():
     def health():
         return jsonify({"ok": True})
 
-    @app.route("/preview/<path:filepath>", methods=["GET"])
-    def serve_preview(filepath: str):
-        token = request.cookies.get("preview_session", "")
-        if not token:
-            return jsonify({"detail": "preview session missing"}), 401
-
+    @app.route("/api/preview-source/<ticket>", methods=["GET"])
+    def serve_kk_preview_source(ticket: str):
+        """Serve exactly one file to kkFileView using a short-lived ticket."""
         try:
-            payload = app.preview_serializer.loads(token, max_age=3600)
-        except (SignatureExpired, BadSignature):
-            return jsonify({"detail": "preview session expired"}), 401
+            payload = app.kk_preview_serializer.loads(ticket, max_age=KK_PREVIEW_MAX_AGE)
+            kind = payload.get("kind")
+            if kind == "student":
+                user = db_manager.find_user_by_id(int(payload["user_id"]))
+                target = file_service.download_target(user, payload["path"]) if user else None
+            elif kind == "admin":
+                target = admin_file_service.target(int(payload["admin_id"]), payload["path"])
+            elif kind == "shared":
+                target = admin_file_service.shared_target(int(payload["share_id"]), int(payload["class_id"]))
+            else:
+                target = None
+        except (BadSignature, SignatureExpired, KeyError, TypeError, ValueError, FileNotFoundError):
+            target = None
 
-        user = db_manager.find_user_by_id(int(payload.get("user_id", 0)))
-        if not user:
-            return jsonify({"detail": "preview user not found"}), 401
-
-        root_rel = file_service.normalize_relative_path(payload.get("root", ""))
-        preview_rel = file_service.normalize_relative_path(filepath)
-        full_rel = f"{root_rel}/{preview_rel}" if root_rel else preview_rel
-
-        try:
-            target = file_service.resolve_user_path(user, full_rel)
-        except ValueError as exc:
-            return jsonify({"detail": str(exc)}), 400
-
-        if not target.exists() or not target.is_file():
-            return jsonify({"detail": "file not found"}), 404
+        if not target or not target.exists() or not target.is_file() or target.is_symlink():
+            return jsonify({"detail": "preview file not found or expired"}), 404
 
         mimetype = mimetypes.guess_type(target.name)[0] or "application/octet-stream"
-        return send_file(target, as_attachment=False, mimetype=mimetype)
+        return send_file(target, as_attachment=False, download_name=target.name, mimetype=mimetype)
 
     return app
 
